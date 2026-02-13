@@ -237,7 +237,7 @@ export default function RoundPage() {
 
               <div>
                 <div className="label">From</div>
-                <PillToggleGroup
+                <PillToggleGroup<Lie>
                   options={LIES.map((lie) => ({ value: lie }))}
                   value={startLie}
                   onChange={setStartLie}
@@ -266,7 +266,7 @@ export default function RoundPage() {
               <div>
                 <div className="label">To</div>
                 {!puttingMode && (
-                  <PillToggleGroup
+                  <PillToggleGroup<Lie>
                     options={LIES.map((lie) => ({ value: lie }))}
                     value={holed ? "GREEN" : endLie}
                     onChange={(value) => {
