@@ -236,19 +236,24 @@ export default function RoundPage() {
                   ariaLabel="Start lie"
                 />
                 <div className="field-gap">
-                  <Input
-                    type="text"
-                    label={startDistanceLabel}
-                    placeholder={startPlaceholder}
-                    value={startDistanceText}
-                    onChange={(e) => setStartDistanceText(e.target.value)}
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    inputRef={startDistanceRef}
-                    error={startDistanceError}
-                    helpText={startDistanceHelp}
-                    onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
-                  />
+                  <label className="input-field">
+                    <div className="label">{startDistanceLabel}</div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      className={`input ${startDistanceError ? "input-error" : ""}`.trim()}
+                      placeholder={startPlaceholder}
+                      value={startDistanceText}
+                      onChange={(e) => setStartDistanceText(e.target.value)}
+                      ref={startDistanceRef}
+                      onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                    />
+                    {startDistanceHelp && !startDistanceError && (
+                      <div className="help">{startDistanceHelp}</div>
+                    )}
+                    {startDistanceError && <div className="error">{startDistanceError}</div>}
+                  </label>
                 </div>
               </div>
 
@@ -267,19 +272,26 @@ export default function RoundPage() {
                 )}
                 <div className="field-gap">
                   {(!puttingMode || !holed) && (
-                    <Input
-                      type="text"
-                      label={puttingMode ? "Leave distance (ft)" : endDistanceLabel}
-                      placeholder={puttingMode ? "e.g. 3" : endPlaceholder}
-                      value={endDistanceText}
-                      onChange={(e) => setEndDistanceText(e.target.value)}
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      inputRef={endDistanceRef}
-                      error={endDistanceError}
-                      helpText={endDistanceHelp}
-                      onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
-                    />
+                    <label className="input-field">
+                      <div className="label">
+                        {puttingMode ? "Leave distance (ft)" : endDistanceLabel}
+                      </div>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        className={`input ${endDistanceError ? "input-error" : ""}`.trim()}
+                        placeholder={puttingMode ? "e.g. 3" : endPlaceholder}
+                        value={endDistanceText}
+                        onChange={(e) => setEndDistanceText(e.target.value)}
+                        ref={endDistanceRef}
+                        onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                      />
+                      {endDistanceHelp && !endDistanceError && (
+                        <div className="help">{endDistanceHelp}</div>
+                      )}
+                      {endDistanceError && <div className="error">{endDistanceError}</div>}
+                    </label>
                   )}
                 </div>
                 {puttingMode && (
