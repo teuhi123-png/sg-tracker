@@ -29,6 +29,7 @@ export default function RoundPage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [notes, setNotes] = useState("");
   const [showErrors, setShowErrors] = useState(false);
+  const [showEndRoundModal, setShowEndRoundModal] = useState(false);
   const puttingMode = startLie === "GREEN";
 
   const startDistanceRef = useRef<HTMLInputElement>(null);
@@ -195,12 +196,16 @@ export default function RoundPage() {
   }
 
   function handleEndRound(): void {
+    setShowEndRoundModal(true);
+  }
+
+  function confirmEndRound(): void {
     if (!round) return;
-    const ok = confirm("End round now?");
-    if (!ok) return;
     const updated: Round = { ...round, endedAt: Date.now() };
     updateRound(updated);
     setRound(updated);
+    setShowEndRoundModal(false);
+    void router.push(`/summary/${round.id}`);
   }
 
   if (!round) {
@@ -219,6 +224,7 @@ export default function RoundPage() {
                   Hole {displayHole} of {targetHoles}
                 </div>
               )}
+              {roundEnded && <div className="badge">Round complete</div>}
             </div>
             <div className="nav-links header-actions">
               <Link href="/" className="pill">
@@ -447,13 +453,16 @@ export default function RoundPage() {
             )}
 
             <div className="action-bar field-gap">
-              <Button type="submit" disabled={roundComplete || !canSave || isHoleComplete || roundEnded}>
+              <Button
+                type="submit"
+                disabled={roundComplete || !canSave || isHoleComplete || roundEnded}
+              >
                 Save shot
               </Button>
               <Button type="button" variant="secondary" onClick={handleUndo}>
                 Undo last shot
               </Button>
-              {roundComplete && <div className="muted">Round complete</div>}
+              {(roundComplete || roundEnded) && <div className="muted">Round complete</div>}
             </div>
             {isHoleComplete && (
               <div className="field-gap">
@@ -551,18 +560,39 @@ export default function RoundPage() {
         </Card>
       </div>
 
-        <div className="mobile-action-bar">
-          <Button type="button" variant="secondary" onClick={handleUndo}>
-            Undo last shot
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSaveShot}
-            disabled={roundComplete || !canSave || isHoleComplete || roundEnded}
-          >
-            Save shot
-          </Button>
-        </div>
+      <div className="mobile-action-bar">
+        <Button type="button" variant="secondary" onClick={handleUndo}>
+          Undo last shot
+        </Button>
+        <Button
+          type="button"
+          onClick={handleSaveShot}
+          disabled={roundComplete || !canSave || isHoleComplete || roundEnded}
+        >
+          Save shot
+        </Button>
       </div>
+
+      {showEndRoundModal && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <div className="h2">End round?</div>
+            <div className="muted">You won’t be able to add more shots.</div>
+            <div className="action-bar">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setShowEndRoundModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="button" onClick={confirmEndRound}>
+                View summary
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
