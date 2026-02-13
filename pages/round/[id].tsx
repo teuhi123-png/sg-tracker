@@ -35,6 +35,7 @@ export default function RoundPage() {
   const endDistanceRef = useRef<HTMLInputElement>(null);
   const lastEndDistanceRef = useRef("");
   const [shotsExpanded, setShotsExpanded] = useState(false);
+  const [expandedHoles, setExpandedHoles] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     if (!router.isReady || !roundId) return;
@@ -65,16 +66,28 @@ export default function RoundPage() {
       .some((s) => s.endLie === "GREEN" && s.endDistance === 0);
   }, [round, holeNumber]);
 
+  const clampDistanceText = (value: string): string => {
+    const digits = value.replace(/\D/g, "");
+    if (digits === "") return "";
+    const n = Number.parseInt(digits, 10);
+    const clamped = Math.min(600, Math.max(0, Number.isFinite(n) ? n : 0));
+    return String(clamped);
+  };
+
+  const parseDistance = (value: string): number => {
+    const digits = value.replace(/\D/g, "");
+    if (digits === "") return 0;
+    const n = Number.parseInt(digits, 10);
+    if (!Number.isFinite(n)) return 0;
+    return Math.min(600, Math.max(0, n));
+  };
+
   const startDistanceValue = useMemo(() => {
-    const trimmed = startDistance.trim();
-    const parsed = trimmed === "" ? 0 : Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : 0;
+    return parseDistance(startDistance);
   }, [startDistance]);
 
   const endDistanceValue = useMemo(() => {
-    const trimmed = endDistance.trim();
-    const parsed = trimmed === "" ? 0 : Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : 0;
+    return parseDistance(endDistance);
   }, [endDistance]);
 
   const previewShot: Shot = {
@@ -89,9 +102,16 @@ export default function RoundPage() {
 
   const previewSg = useMemo(() => calculateStrokesGained(previewShot), [previewShot]);
 
-  const roundComplete = holed && holeNumber === 18;
-  const canSave = startDistance.trim() !== "" && (holed || endDistance.trim() !== "");
   const targetHoles = round?.targetHoles ?? 18;
+  const clampedHoleIndex = Math.min(Math.max(holeNumber - 1, 0), targetHoles - 1);
+  const displayHole = (clampedHoleIndex % targetHoles) + 1;
+
+  useEffect(() => {
+    setHoleNumber((h) => Math.min(Math.max(h, 1), targetHoles));
+  }, [targetHoles]);
+
+  const roundComplete = holed && displayHole === targetHoles;
+  const canSave = startDistance.trim() !== "" && (holed || endDistance.trim() !== "");
   const roundEnded = Boolean(round?.endedAt);
 
   const startDistanceError =
@@ -108,9 +128,24 @@ export default function RoundPage() {
   const previewStartUnit = startLie === "GREEN" ? "ft" : "m";
   const previewEndUnit = (holed ? "GREEN" : endLie) === "GREEN" ? "ft" : "m";
   const endSuggestion =
-    holeNumber >= targetHoles && isHoleComplete && !roundEnded
+    displayHole >= targetHoles && isHoleComplete && !roundEnded
       ? "Last hole complete — consider ending the round."
       : undefined;
+
+  const shotsByHole = useMemo(() => {
+    if (!round) return [] as Array<[number, Shot[]]>;
+    const sorted = [...round.shots].sort((a, b) => {
+      if (a.holeNumber !== b.holeNumber) return a.holeNumber - b.holeNumber;
+      return a.shotNumber - b.shotNumber;
+    });
+    const map = new Map<number, Shot[]>();
+    for (const shot of sorted) {
+      const list = map.get(shot.holeNumber) ?? [];
+      list.push(shot);
+      map.set(shot.holeNumber, list);
+    }
+    return Array.from(map.entries());
+  }, [round]);
 
   function handleSaveShot(): void {
     if (!roundId) return;
@@ -125,7 +160,7 @@ export default function RoundPage() {
     if (updated) setRound(updated);
 
     if (previewShot.endDistance === 0 || holed) {
-      setHoleNumber((h) => Math.min(18, h + 1));
+      setHoleNumber((h) => Math.min(targetHoles, h + 1));
       setStartLie("TEE");
       setStartDistance("");
       setEndLie("FAIRWAY");
@@ -181,7 +216,7 @@ export default function RoundPage() {
               <div className="course-name">{round.courseName || "Unnamed course"}</div>
               {!roundEnded && (
                 <div className="muted">
-                  Hole {holeNumber} of {targetHoles}
+                  Hole {displayHole} of {targetHoles}
                 </div>
               )}
             </div>
@@ -212,15 +247,15 @@ export default function RoundPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => setHoleNumber(Math.max(1, holeNumber - 1))}
+                  onClick={() => setHoleNumber((h) => Math.max(1, h - 1))}
                 >
                   −
                 </Button>
-                <div className="stepper-value">Hole {holeNumber}</div>
+                <div className="stepper-value">Hole {displayHole}</div>
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => setHoleNumber(Math.min(18, holeNumber + 1))}
+                  onClick={() => setHoleNumber((h) => Math.min(targetHoles, h + 1))}
                 >
                   +
                 </Button>
@@ -242,9 +277,10 @@ export default function RoundPage() {
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
+                      maxLength={3}
                       placeholder="e.g. 145"
                       value={startDistance ?? ""}
-                      onChange={(e) => setStartDistance(e.target.value)}
+                      onChange={(e) => setStartDistance(clampDistanceText(e.target.value))}
                       ref={startDistanceRef}
                       onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                     />
@@ -280,9 +316,10 @@ export default function RoundPage() {
                         type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
+                        maxLength={3}
                         placeholder="e.g. 120"
                         value={endDistance ?? ""}
-                        onChange={(e) => setEndDistance(e.target.value)}
+                        onChange={(e) => setEndDistance(clampDistanceText(e.target.value))}
                         ref={endDistanceRef}
                         onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                       />
@@ -337,40 +374,47 @@ export default function RoundPage() {
               </div>
             </div>
 
+            <div className="hero">
+              <div>
+                <div className="label">Penalty shots</div>
+                <div className="pill-group">
+                  <button
+                    type="button"
+                    className={`pill ${penaltyStrokes === 0 ? "active" : ""}`.trim()}
+                    onClick={() => setPenaltyStrokes(0)}
+                  >
+                    0
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill ${penaltyStrokes === 1 ? "active" : ""}`.trim()}
+                    onClick={() => setPenaltyStrokes(1)}
+                  >
+                    +1
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill ${penaltyStrokes === 2 ? "active" : ""}`.trim()}
+                    onClick={() => setPenaltyStrokes(2)}
+                  >
+                    +2
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="field-gap">
               <button
                 type="button"
                 onClick={() => setShowAdvanced(!showAdvanced)}
                 className="pill"
               >
-                {showAdvanced ? "Hide advanced options" : "Advanced options"}
+                {showAdvanced ? "Hide more options" : "More options"}
               </button>
             </div>
 
             {showAdvanced && (
               <div className="hero">
-                <div>
-                  <div className="label">Penalty strokes</div>
-                  <div className="pill-group">
-                    <button
-                      type="button"
-                      className={`pill ${penaltyStrokes === 1 ? "active" : ""}`.trim()}
-                      onClick={() => setPenaltyStrokes(1)}
-                    >
-                      +1
-                    </button>
-                    <button
-                      type="button"
-                      className={`pill ${penaltyStrokes === 2 ? "active" : ""}`.trim()}
-                      onClick={() => setPenaltyStrokes(2)}
-                    >
-                      +2
-                    </button>
-                    <button type="button" className="pill" onClick={() => setPenaltyStrokes(0)}>
-                      Clear
-                    </button>
-                  </div>
-                </div>
                 <label className="input-field">
                   <div className="label">Notes</div>
                   <textarea
@@ -417,7 +461,7 @@ export default function RoundPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => setHoleNumber((h) => Math.min(18, h + 1))}
+                  onClick={() => setHoleNumber((h) => Math.min(targetHoles, h + 1))}
                 >
                   Next hole
                 </Button>
@@ -441,7 +485,66 @@ export default function RoundPage() {
           }
         >
           {shotsExpanded ? (
-            <div className="muted">Shot list temporarily disabled.</div>
+            <div className="shot-list">
+              {shotsByHole.map(([hole, shots], idx) => (
+                <div key={`hole-${hole}`} className={idx === 0 ? "" : "shot-group"}>
+                  <button
+                    type="button"
+                    className="hole-toggle"
+                    onClick={() =>
+                      setExpandedHoles((prev) => ({
+                        ...prev,
+                        [hole]: !prev[hole],
+                      }))
+                    }
+                    aria-expanded={expandedHoles[hole] ?? false}
+                  >
+                    Hole {hole} ({shots.length} shots){" "}
+                    <span className="muted">{expandedHoles[hole] ? "▼" : "▶"}</span>
+                  </button>
+                  {(expandedHoles[hole] ?? false) && (
+                    <div className="shot-list">
+                      {shots.map((shot) => {
+                        const { sg, category, isValid } = calculateStrokesGained(shot);
+                        const startUnit = shot.startLie === "GREEN" ? "ft" : "m";
+                        const endUnit = shot.endLie === "GREEN" ? "ft" : "m";
+                        return (
+                          <div
+                            key={`${shot.holeNumber}-${shot.shotNumber}`}
+                            className="shot-row score-row"
+                          >
+                            <div>
+                              <div className="score-line">
+                                {shot.startLie} → {shot.endLie}
+                              </div>
+                              <div className="muted">
+                                {shot.startDistance}
+                                {startUnit} → {shot.endDistance}
+                                {endUnit}
+                              </div>
+                            </div>
+                            <div className="score-meta">
+                              {shot.penaltyStrokes > 0 && (
+                                <span className="muted">Penalty +{shot.penaltyStrokes}</span>
+                              )}
+                              {isValid && sg !== null ? (
+                                <>
+                                  <StatChip value={sg} decimals={2} />
+                                  <span className="chip">{category}</span>
+                                </>
+                              ) : (
+                                <span className="muted">SG: —</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {round.shots.length === 0 && <div className="muted">No shots yet.</div>}
+            </div>
           ) : (
             <div className="muted">Tap to expand shot list.</div>
           )}
