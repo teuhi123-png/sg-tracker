@@ -40,11 +40,11 @@ export default function RoundPage() {
 
   const [holeNumber, setHoleNumber] = useState(1);
   const [startLie, setStartLie] = useState<Lie>("TEE");
-  const [startDistanceText, setStartDistanceText] = useState("");
+  const [startDistance, setStartDistance] = useState<string>("");
   const [penaltyStrokes, setPenaltyStrokes] = useState(0);
   const [holed, setHoled] = useState(false);
   const [endLie, setEndLie] = useState<Lie>("FAIRWAY");
-  const [endDistanceText, setEndDistanceText] = useState("");
+  const [endDistance, setEndDistance] = useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [notes, setNotes] = useState("");
   const [showErrors, setShowErrors] = useState(false);
@@ -85,16 +85,16 @@ export default function RoundPage() {
   }, [round, holeNumber]);
 
   const startDistanceValue = useMemo(() => {
-    const trimmed = startDistanceText.trim();
+    const trimmed = startDistance.trim();
     const parsed = trimmed === "" ? 0 : Number(trimmed);
     return Number.isFinite(parsed) ? parsed : 0;
-  }, [startDistanceText]);
+  }, [startDistance]);
 
   const endDistanceValue = useMemo(() => {
-    const trimmed = endDistanceText.trim();
+    const trimmed = endDistance.trim();
     const parsed = trimmed === "" ? 0 : Number(trimmed);
     return Number.isFinite(parsed) ? parsed : 0;
-  }, [endDistanceText]);
+  }, [endDistance]);
 
   const previewShot: Shot = {
     holeNumber,
@@ -109,15 +109,14 @@ export default function RoundPage() {
   const previewSg = useMemo(() => calculateStrokesGained(previewShot), [previewShot]);
 
   const roundComplete = holed && holeNumber === 18;
-  const canSave =
-    startDistanceText.trim() !== "" && (holed || endDistanceText.trim() !== "");
+  const canSave = startDistance.trim() !== "" && (holed || endDistance.trim() !== "");
   const targetHoles = round?.targetHoles ?? 18;
   const roundEnded = Boolean(round?.endedAt);
 
   const startDistanceError =
-    showErrors && startDistanceText.trim() === "" ? "Enter a start distance" : undefined;
+    showErrors && startDistance.trim() === "" ? "Enter a start distance" : undefined;
   const endDistanceError =
-    showErrors && !holed && endDistanceText.trim() === "" ? "Enter an end distance" : undefined;
+    showErrors && !holed && endDistance.trim() === "" ? "Enter an end distance" : undefined;
   const startDistanceLabel =
     startLie === "GREEN" ? "Start distance (ft)" : "Start distance (m)";
   const endDistanceLabel = endLie === "GREEN" ? "End distance (ft)" : "End distance (m)";
@@ -147,9 +146,9 @@ export default function RoundPage() {
     if (previewShot.endDistance === 0 || holed) {
       setHoleNumber((h) => Math.min(18, h + 1));
       setStartLie("TEE");
-      setStartDistanceText("");
+      setStartDistance("");
       setEndLie("FAIRWAY");
-      setEndDistanceText("");
+      setEndDistance("");
       setPenaltyStrokes(0);
       setHoled(false);
       setShowAdvanced(false);
@@ -158,9 +157,9 @@ export default function RoundPage() {
     } else {
       const nextStartLie = previewShot.endLie;
       setStartLie(nextStartLie);
-      setStartDistanceText(String(endDistanceValue));
+      setStartDistance(String(endDistanceValue));
       setEndLie(nextStartLie === "GREEN" ? "GREEN" : "FAIRWAY");
-      setEndDistanceText("");
+      setEndDistance("");
       setPenaltyStrokes(0);
       setHoled(false);
       setNotes("");
@@ -264,13 +263,12 @@ export default function RoundPage() {
                   <label className="input-field">
                     <div className="label">{startDistanceLabel}</div>
                     <input
-                      type="text"
+                      type="number"
                       inputMode="numeric"
-                      pattern="[0-9]*"
                       className={`input ${startDistanceError ? "input-error" : ""}`.trim()}
-                      placeholder={startPlaceholder}
-                      value={startDistanceText}
-                      onChange={(e) => setStartDistanceText(e.target.value)}
+                      placeholder="e.g. 145"
+                      value={startDistance ?? ""}
+                      onChange={(e) => setStartDistance(e.target.value)}
                       ref={startDistanceRef}
                       onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                     />
@@ -302,13 +300,12 @@ export default function RoundPage() {
                         {puttingMode ? "Leave distance (ft)" : endDistanceLabel}
                       </div>
                       <input
-                        type="text"
+                        type="number"
                         inputMode="numeric"
-                        pattern="[0-9]*"
                         className={`input ${endDistanceError ? "input-error" : ""}`.trim()}
-                        placeholder={puttingMode ? "e.g. 3" : endPlaceholder}
-                        value={endDistanceText}
-                        onChange={(e) => setEndDistanceText(e.target.value)}
+                        placeholder="e.g. 12"
+                        value={endDistance ?? ""}
+                        onChange={(e) => setEndDistance(e.target.value)}
                         ref={endDistanceRef}
                         onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                       />
@@ -330,10 +327,10 @@ export default function RoundPage() {
                         setHoled(next);
                         setEndLie("GREEN");
                         if (next) {
-                          lastEndDistanceRef.current = endDistanceText;
-                          setEndDistanceText("0");
+                          lastEndDistanceRef.current = endDistance;
+                          setEndDistance("0");
                         } else {
-                          setEndDistanceText(lastEndDistanceRef.current || "");
+                          setEndDistance(lastEndDistanceRef.current || "");
                         }
                       }}
                     >
@@ -352,7 +349,7 @@ export default function RoundPage() {
                         setHoled(next);
                         if (next) {
                           setEndLie("GREEN");
-                          setEndDistanceText("0");
+                          setEndDistance("0");
                         }
                       }}
                     >
