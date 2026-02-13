@@ -23,13 +23,13 @@ export default function RoundPage() {
         position: "fixed",
         top: 10,
         left: 10,
-        zIndex: 99999,
+        zIndex: 999999,
         padding: 12,
         fontSize: 18,
         background: "white",
         color: "black",
       }}
-      onChange={(e) => console.log("DEBUG typing", e.target.value)}
+      onChange={(e) => console.log("DEBUG typing:", e.target.value)}
     />
   );
   const router = useRouter();
@@ -60,6 +60,24 @@ export default function RoundPage() {
     const found = getRound(roundId);
     setRound(found ?? null);
   }, [router.isReady, roundId]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      console.log(
+        "KEYDOWN",
+        e.key,
+        "target:",
+        t?.tagName,
+        "id:",
+        (t as any)?.id,
+        "defaultPrevented:",
+        e.defaultPrevented,
+      );
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, []);
 
   useEffect(() => {
     if (!round) return;
@@ -189,49 +207,50 @@ export default function RoundPage() {
 
   if (!round) {
     return (
-      <div className="page">
+      <>
         {debugInput}
-        Loading round...
-      </div>
+        <div className="page">Loading round...</div>
+      </>
     );
   }
 
   return (
-    <div className="page mobile-action-spacer">
+    <>
       {debugInput}
-      <div className="top-header">
-        <div className="top-row container header-wrap">
-          <div className="header-left">
-            <div className="h1">Round entry</div>
-            <div className="course-name">{round.courseName || "Unnamed course"}</div>
-            {!roundEnded && (
-              <div className="muted">
-                Hole {holeNumber} of {targetHoles}
-              </div>
-            )}
-          </div>
-          <div className="nav-links header-actions">
-            <Link href="/" className="pill">
-              Back
-            </Link>
-            <Link href={`/summary/${round.id}`} className="pill">
-              Summary
-            </Link>
-            <button type="button" className="pill" onClick={handleEndRound}>
-              End round
-            </button>
+      <div className="page mobile-action-spacer" style={{ background: "red" }}>
+        <div className="top-header">
+          <div className="top-row container header-wrap">
+            <div className="header-left">
+              <div className="h1">Round entry</div>
+              <div className="course-name">{round.courseName || "Unnamed course"}</div>
+              {!roundEnded && (
+                <div className="muted">
+                  Hole {holeNumber} of {targetHoles}
+                </div>
+              )}
+            </div>
+            <div className="nav-links header-actions">
+              <Link href="/" className="pill">
+                Back
+              </Link>
+              <Link href={`/summary/${round.id}`} className="pill">
+                Summary
+              </Link>
+              <button type="button" className="pill" onClick={handleEndRound}>
+                End round
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="container">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSaveShot();
-          }}
-        >
-          <Card title="Beginner mode" subtitle="Quick, guided shot entry">
+        <div className="container">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSaveShot();
+            }}
+          >
+            <Card title="Beginner mode" subtitle="Quick, guided shot entry">
             <div className="hero">
               <div className="stepper">
                 <Button
@@ -271,6 +290,12 @@ export default function RoundPage() {
                       onChange={(e) => setStartDistance(e.target.value)}
                       ref={startDistanceRef}
                       onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                      style={{
+                        position: "relative",
+                        zIndex: 999999,
+                        background: "white",
+                        pointerEvents: "auto",
+                      }}
                     />
                     {startDistanceHelp && !startDistanceError && (
                       <div className="help">{startDistanceHelp}</div>
@@ -527,14 +552,19 @@ export default function RoundPage() {
         </Card>
       </div>
 
-      <div className="mobile-action-bar">
-        <Button type="button" variant="secondary" onClick={handleUndo}>
-          Undo last shot
-        </Button>
-        <Button type="button" onClick={handleSaveShot} disabled={roundComplete || !canSave || isHoleComplete || roundEnded}>
-          Save shot
-        </Button>
+        <div className="mobile-action-bar">
+          <Button type="button" variant="secondary" onClick={handleUndo}>
+            Undo last shot
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSaveShot}
+            disabled={roundComplete || !canSave || isHoleComplete || roundEnded}
+          >
+            Save shot
+          </Button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
