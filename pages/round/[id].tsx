@@ -13,25 +13,6 @@ import StatChip from "../../components/ui/StatChip";
 const LIES: Lie[] = ["TEE", "FAIRWAY", "ROUGH", "BUNKER", "RECOVERY", "FRINGE", "GREEN"];
 
 export default function RoundPage() {
-  // DEBUG: temporary input to confirm typing/focus works at top-most layer.
-  const debugInput = (
-    <input
-      id="debugInput"
-      type="text"
-      placeholder="DEBUG: can you type here?"
-      style={{
-        position: "fixed",
-        top: 10,
-        left: 10,
-        zIndex: 999999,
-        padding: 12,
-        fontSize: 18,
-        background: "white",
-        color: "black",
-      }}
-      onChange={(e) => console.log("DEBUG typing:", e.target.value)}
-    />
-  );
   const router = useRouter();
   const { id } = router.query;
   const roundId = typeof id === "string" ? id : "";
@@ -60,24 +41,6 @@ export default function RoundPage() {
     const found = getRound(roundId);
     setRound(found ?? null);
   }, [router.isReady, roundId]);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      console.log(
-        "KEYDOWN",
-        e.key,
-        "target:",
-        t?.tagName,
-        "id:",
-        (t as any)?.id,
-        "defaultPrevented:",
-        e.defaultPrevented,
-      );
-    };
-    window.addEventListener("keydown", handler, true);
-    return () => window.removeEventListener("keydown", handler, true);
-  }, []);
 
   useEffect(() => {
     if (!round) return;
@@ -206,18 +169,11 @@ export default function RoundPage() {
   }
 
   if (!round) {
-    return (
-      <>
-        {debugInput}
-        <div className="page">Loading round...</div>
-      </>
-    );
+    return <div className="page">Loading round...</div>;
   }
 
   return (
-    <>
-      {debugInput}
-      <div className="page mobile-action-spacer" style={{ background: "red" }}>
+      <div className="page mobile-action-spacer">
         <div className="top-header">
           <div className="top-row container header-wrap">
             <div className="header-left">
@@ -282,23 +238,15 @@ export default function RoundPage() {
                   <label className="input-field">
                     <div className="label">{startDistanceLabel}</div>
                     <input
+                      className="input"
                       type="text"
                       inputMode="numeric"
-                      className={`input ${startDistanceError ? "input-error" : ""}`.trim()}
+                      pattern="[0-9]*"
                       placeholder="e.g. 145"
-                      defaultValue={startDistance ?? ""}
-                      onChange={(e) => console.log("START change:", e.target.value)}
-                      onInput={(e) =>
-                        console.log("START input:", (e.target as HTMLInputElement).value)
-                      }
+                      value={startDistance ?? ""}
+                      onChange={(e) => setStartDistance(e.target.value)}
                       ref={startDistanceRef}
                       onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
-                      style={{
-                        position: "relative",
-                        zIndex: 999999,
-                        background: "white",
-                        pointerEvents: "auto",
-                      }}
                     />
                     {startDistanceHelp && !startDistanceError && (
                       <div className="help">{startDistanceHelp}</div>
@@ -328,15 +276,13 @@ export default function RoundPage() {
                         {puttingMode ? "Leave distance (ft)" : endDistanceLabel}
                       </div>
                       <input
+                        className="input"
                         type="text"
                         inputMode="numeric"
-                        className={`input ${endDistanceError ? "input-error" : ""}`.trim()}
-                        placeholder="e.g. 12"
-                        defaultValue={endDistance ?? ""}
-                        onChange={(e) => console.log("END change:", e.target.value)}
-                        onInput={(e) =>
-                          console.log("END input:", (e.target as HTMLInputElement).value)
-                        }
+                        pattern="[0-9]*"
+                        placeholder="e.g. 120"
+                        value={endDistance ?? ""}
+                        onChange={(e) => setEndDistance(e.target.value)}
                         ref={endDistanceRef}
                         onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                       />
@@ -571,6 +517,5 @@ export default function RoundPage() {
           </Button>
         </div>
       </div>
-    </>
   );
 }
