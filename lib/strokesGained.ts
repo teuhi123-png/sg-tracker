@@ -17,16 +17,21 @@ export function calculateStrokesGained(shot: Shot): {
   isValid: boolean;
 } {
   const expectedStart = getExpectedStrokes(shot.startLie, shot.startDistance);
-  const expectedEnd =
-    shot.endDistance === 0 && shot.endLie === "GREEN"
-      ? 0
-      : getExpectedStrokes(shot.endLie, shot.endDistance);
+  const isHoled =
+    (shot.endLie === "GREEN" && shot.endDistance === 0) ||
+    (shot.startLie === "GREEN" && typeof shot.putts === "number");
+  const expectedEnd = isHoled ? 0 : getExpectedStrokes(shot.endLie, shot.endDistance);
 
   if (expectedStart === null || expectedEnd === null) {
     return { sg: null, category: "APP", isValid: false };
   }
 
-  const raw = expectedStart - expectedEnd - 1 - shot.penaltyStrokes;
+  const strokesUsed =
+    shot.startLie === "GREEN" && typeof shot.putts === "number"
+      ? shot.putts + shot.penaltyStrokes
+      : 1 + shot.penaltyStrokes;
+
+  const raw = expectedStart - expectedEnd - strokesUsed;
   const sg = Math.round(raw * 1000) / 1000;
 
   return { sg, category: categorizeShot(shot), isValid: true };

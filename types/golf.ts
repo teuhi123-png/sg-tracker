@@ -18,6 +18,7 @@ export type Shot = {
   endDistance: number;
 
   penaltyStrokes: number;
+  putts?: number;
 };
 
 export type Round = {

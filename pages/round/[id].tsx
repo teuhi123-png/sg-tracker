@@ -30,6 +30,9 @@ export default function RoundPage() {
   const [notes, setNotes] = useState("");
   const [showErrors, setShowErrors] = useState(false);
   const [showEndRoundModal, setShowEndRoundModal] = useState(false);
+  const [lastShotSummary, setLastShotSummary] = useState<string>("");
+  const [showCustomPutts, setShowCustomPutts] = useState(false);
+  const [customPutts, setCustomPutts] = useState<string>("");
   const puttingMode = startLie === "GREEN";
 
   const startDistanceRef = useRef<HTMLInputElement>(null);
@@ -161,6 +164,14 @@ export default function RoundPage() {
     const updated = addShot(roundId, previewShot);
     if (updated) setRound(updated);
 
+    const summaryStartUnit = previewShot.startLie === "GREEN" ? "ft" : "m";
+    const summaryEndUnit = previewShot.endLie === "GREEN" ? "ft" : "m";
+    const summary =
+      previewShot.endLie === "GREEN" && previewShot.endDistance === 0
+        ? `Last shot: ${previewShot.startDistance}${summaryStartUnit} → holed`
+        : `Last shot: ${previewShot.startDistance}${summaryStartUnit} → ${previewShot.endDistance}${summaryEndUnit}`;
+    setLastShotSummary(summary);
+
     if (previewShot.endDistance === 0 || holed) {
       setHoleNumber((h) => Math.min(targetHoles, h + 1));
       setStartLie("TEE");
@@ -206,6 +217,42 @@ export default function RoundPage() {
     if (updated) setRound(updated);
     setShowEndRoundModal(false);
     void router.push(`/summary/${roundId}`);
+  }
+
+  function handleSavePutt(count: number): void {
+    if (!roundId) return;
+    if (roundEnded) return;
+    if (isHoleComplete) return;
+
+    const putts = Math.min(10, Math.max(1, count));
+    const shot: Shot = {
+      holeNumber,
+      shotNumber: nextShotNumber,
+      startLie: "GREEN",
+      startDistance: startDistanceValue,
+      endLie: "GREEN",
+      endDistance: 0,
+      penaltyStrokes,
+      putts,
+    };
+
+    const updated = addShot(roundId, shot);
+    if (updated) setRound(updated);
+
+    setLastShotSummary(`Last shot: ${putts} putt${putts === 1 ? "" : "s"}`);
+    setHoleNumber((h) => Math.min(targetHoles, h + 1));
+    setStartLie("TEE");
+    setStartDistance("");
+    setEndLie("FAIRWAY");
+    setEndDistance("");
+    setPenaltyStrokes(0);
+    setHoled(false);
+    setShowAdvanced(false);
+    setNotes("");
+    setShowErrors(false);
+    setShowCustomPutts(false);
+    setCustomPutts("");
+    startDistanceRef.current?.focus();
   }
 
   if (!round) {
@@ -289,28 +336,30 @@ export default function RoundPage() {
                   }}
                   ariaLabel="Start lie"
                 />
-                <div className="field-gap">
-                  <label className="input-field">
-                    <div className="label">{startDistanceLabel}</div>
-                    <input
-                      className="input"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={3}
-                      placeholder="e.g. 145"
-                      value={startDistance ?? ""}
-                      onChange={(e) => setStartDistance(clampDistanceText(e.target.value))}
-                      disabled={isEnded}
-                      ref={startDistanceRef}
-                      onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
-                    />
-                    {startDistanceHelp && !startDistanceError && (
-                      <div className="help">{startDistanceHelp}</div>
-                    )}
-                    {startDistanceError && <div className="error">{startDistanceError}</div>}
-                  </label>
-                </div>
+                {!puttingMode && (
+                  <div className="field-gap">
+                    <label className="input-field">
+                      <div className="label">{startDistanceLabel}</div>
+                      <input
+                        className="input"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={3}
+                        placeholder="e.g. 145"
+                        value={startDistance ?? ""}
+                        onChange={(e) => setStartDistance(clampDistanceText(e.target.value))}
+                        disabled={isEnded}
+                        ref={startDistanceRef}
+                        onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                      />
+                      {startDistanceHelp && !startDistanceError && (
+                        <div className="help">{startDistanceHelp}</div>
+                      )}
+                      {startDistanceError && <div className="error">{startDistanceError}</div>}
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -327,53 +376,86 @@ export default function RoundPage() {
                     ariaLabel="End lie"
                   />
                 )}
-                <div className="field-gap">
-                  {(!puttingMode || !holed) && (
-                    <label className="input-field">
-                      <div className="label">
-                        {puttingMode ? "Leave distance (ft)" : endDistanceLabel}
-                      </div>
-                      <input
-                        className="input"
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={3}
-                        placeholder="e.g. 120"
-                        value={endDistance ?? ""}
-                        onChange={(e) => setEndDistance(clampDistanceText(e.target.value))}
-                        disabled={isEnded}
-                        ref={endDistanceRef}
-                        onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
-                      />
-                      {endDistanceHelp && !endDistanceError && (
-                        <div className="help">{endDistanceHelp}</div>
-                      )}
-                      {endDistanceError && <div className="error">{endDistanceError}</div>}
-                    </label>
-                  )}
-                </div>
+                {!puttingMode && (
+                  <div className="field-gap">
+                    {!holed && (
+                      <label className="input-field">
+                        <div className="label">{endDistanceLabel}</div>
+                        <input
+                          className="input"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={3}
+                          placeholder="e.g. 120"
+                          value={endDistance ?? ""}
+                          onChange={(e) => setEndDistance(clampDistanceText(e.target.value))}
+                          disabled={isEnded}
+                          ref={endDistanceRef}
+                          onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                        />
+                        {endDistanceHelp && !endDistanceError && (
+                          <div className="help">{endDistanceHelp}</div>
+                        )}
+                        {endDistanceError && <div className="error">{endDistanceError}</div>}
+                      </label>
+                    )}
+                  </div>
+                )}
                 {puttingMode && (
-                  <div className="holed-cta-wrap">
-                    <button
-                      type="button"
-                      className={`pill pill-cta ${holed ? "active" : ""}`.trim()}
-                      aria-pressed={holed}
-                      disabled={isEnded}
-                      onClick={() => {
-                        const next = !holed;
-                        setHoled(next);
-                        setEndLie("GREEN");
-                        if (next) {
-                          lastEndDistanceRef.current = endDistance;
-                          setEndDistance("0");
-                        } else {
-                          setEndDistance(lastEndDistanceRef.current || "");
-                        }
-                      }}
-                    >
-                      Holed
-                    </button>
+                  <div className="field-gap">
+                    <div className="label">Putts</div>
+                    <div className="pill-group">
+                      {[1, 2, 3].map((count) => (
+                        <button
+                          key={`putt-${count}`}
+                          type="button"
+                          className="pill"
+                          disabled={isEnded}
+                          onClick={() => handleSavePutt(count)}
+                        >
+                          {count}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="pill"
+                        disabled={isEnded}
+                        onClick={() => setShowCustomPutts((v) => !v)}
+                      >
+                        4+
+                      </button>
+                    </div>
+                    {showCustomPutts && (
+                      <div className="field-gap">
+                        <label className="input-field">
+                          <div className="label">Putts (4–10)</div>
+                          <input
+                            className="input"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={2}
+                            placeholder="4"
+                            value={customPutts}
+                            onChange={(e) => setCustomPutts(clampDistanceText(e.target.value))}
+                            disabled={isEnded}
+                          />
+                        </label>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            const parsed = parseDistance(customPutts);
+                            const count = Math.min(10, Math.max(4, parsed || 4));
+                            handleSavePutt(count);
+                          }}
+                          disabled={isEnded}
+                        >
+                          Save putts
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
                 {!puttingMode && (
@@ -398,6 +480,8 @@ export default function RoundPage() {
                 )}
               </div>
             </div>
+
+            {lastShotSummary && <div className="muted">{lastShotSummary}</div>}
 
             <div className="hero">
               <div>
@@ -529,6 +613,16 @@ export default function RoundPage() {
             <div className="shot-list">
               {shotsByHole.map(([hole, shots], idx) => (
                 <div key={`hole-${hole}`} className={idx === 0 ? "" : "shot-group"}>
+                  {(() => {
+                    const holePenalty = shots.reduce(
+                      (sum, s) => sum + (s.penaltyStrokes || 0),
+                      0,
+                    );
+                    const holeLabel =
+                      holePenalty > 0
+                        ? `Hole ${hole} (${shots.length} +${holePenalty})`
+                        : `Hole ${hole} (${shots.length} shots)`;
+                    return (
                   <button
                     type="button"
                     className="hole-toggle"
@@ -540,9 +634,11 @@ export default function RoundPage() {
                     }
                     aria-expanded={expandedHoles[hole] ?? false}
                   >
-                    Hole {hole} ({shots.length} shots){" "}
+                    {holeLabel}{" "}
                     <span className="muted">{expandedHoles[hole] ? "▼" : "▶"}</span>
                   </button>
+                    );
+                  })()}
                   {(expandedHoles[hole] ?? false) && (
                     <div className="shot-list">
                       {shots.map((shot) => {

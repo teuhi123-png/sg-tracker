@@ -62,6 +62,16 @@ export default function SummaryPage() {
     return base;
   }, [round]);
 
+  const totalPenalties = useMemo(() => {
+    if (!round) return 0;
+    return round.shots.reduce((sum, shot) => sum + (shot.penaltyStrokes || 0), 0);
+  }, [round]);
+
+  const adjustedScore = useMemo(() => {
+    if (!round) return 0;
+    return round.shots.length + totalPenalties;
+  }, [round, totalPenalties]);
+
   const hasInvalidBaseline = useMemo(() => {
     if (!round) return false;
     return round.shots.some((shot) => !calculateStrokesGained(shot).isValid);
@@ -88,24 +98,34 @@ export default function SummaryPage() {
     ];
   }, [totals]);
 
-  const weakness = useMemo(() => {
-    const entries: Array<{ label: string; value: number }> = [
-      { label: "Off the Tee", value: totals.OTT },
-      { label: "Approach", value: totals.APP },
-      { label: "Around the Green", value: totals.ARG },
+  const categoryEntries = useMemo(() => {
+    return [
+      { label: "Tee shots", value: totals.OTT },
+      { label: "Approach shots", value: totals.APP },
+      { label: "Short game", value: totals.ARG },
       { label: "Putting", value: totals.PUTT },
     ];
+  }, [totals]);
 
-    const negatives = entries.filter((e) => e.value < 0);
-    if (negatives.length === 0) return null;
+  const strength = useMemo(() => {
+    if (categoryEntries.length === 0) return null;
+    let best = categoryEntries[0];
+    for (const entry of categoryEntries) {
+      if (entry.value > best.value) best = entry;
+    }
+    if (best.value === 0) return null;
+    return best;
+  }, [categoryEntries]);
 
-    let worst = negatives[0];
-    for (const entry of negatives) {
+  const weakness = useMemo(() => {
+    if (categoryEntries.length === 0) return null;
+    let worst = categoryEntries[0];
+    for (const entry of categoryEntries) {
       if (entry.value < worst.value) worst = entry;
     }
-
-    return { label: worst.label, value: worst.value };
-  }, [totals]);
+    if (worst.value === 0) return null;
+    return worst;
+  }, [categoryEntries]);
 
   const sanity = useMemo(() => {
     if (!round) return null;
@@ -137,57 +157,44 @@ export default function SummaryPage() {
     };
   }, [round]);
 
-  const keyInsight = useMemo(() => {
-    if (!round) return null;
-    const buckets = [
-      { key: "long", label: "200m+", total: 0 },
-      { key: "mid", label: "100–200m", total: 0 },
-      { key: "short", label: "<100m", total: 0 },
-      { key: "putting", label: "Putting", total: 0 },
-    ];
+  const keyMoments = useMemo(() => {
+    if (!round) return { gains: [], losses: [] } as {
+      gains: Array<{ label: string; sg: number }>;
+      losses: Array<{ label: string; sg: number }>;
+    };
 
+    const entries: Array<{ label: string; sg: number }> = [];
     for (const shot of round.shots) {
       const { sg, isValid } = calculateStrokesGained(shot);
       if (!isValid || sg === null) continue;
-
-      if (shot.startLie === "GREEN") {
-        buckets.find((b) => b.key === "putting")!.total += sg;
-        continue;
-      }
-
-      if (shot.startDistance >= 200) {
-        buckets.find((b) => b.key === "long")!.total += sg;
-      } else if (shot.startDistance >= 100) {
-        buckets.find((b) => b.key === "mid")!.total += sg;
-      } else {
-        buckets.find((b) => b.key === "short")!.total += sg;
-      }
+      const label = `Hole ${shot.holeNumber}: ${shot.startLie} → ${shot.endLie}`;
+      entries.push({ label, sg });
     }
 
-    let worst = buckets[0];
-    for (const b of buckets) {
-      if (b.total < worst.total) worst = b;
-    }
+    const gains = entries
+      .filter((e) => e.sg > 0)
+      .sort((a, b) => b.sg - a.sg)
+      .slice(0, 2);
+    const losses = entries
+      .filter((e) => e.sg < 0)
+      .sort((a, b) => a.sg - b.sg)
+      .slice(0, 2);
 
-    let message = "";
-    switch (worst.key) {
-      case "putting":
-        message = "Putting cost you the most strokes.";
-        break;
-      case "short":
-        message = "You lost most strokes inside 100m.";
-        break;
-      case "mid":
-        message = "Mid-range approach play hurt the most.";
-        break;
-      case "long":
-        message = "Long game cost you the round.";
-        break;
-      default:
-        message = "The biggest leak is in your approach play.";
-    }
+    return { gains, losses };
+  }, [round]);
 
-    return { message, value: worst.total };
+  const holeSummaries = useMemo(() => {
+    if (!round) return [] as Array<{ hole: number; shots: number; penalties: number }>;
+    const map = new Map<number, { shots: number; penalties: number }>();
+    for (const shot of round.shots) {
+      const entry = map.get(shot.holeNumber) ?? { shots: 0, penalties: 0 };
+      entry.shots += 1;
+      entry.penalties += shot.penaltyStrokes || 0;
+      map.set(shot.holeNumber, entry);
+    }
+    return Array.from(map.entries())
+      .map(([hole, data]) => ({ hole, shots: data.shots, penalties: data.penalties }))
+      .sort((a, b) => a.hole - b.hole);
   }, [round]);
 
   if (!router.isReady) {
@@ -264,12 +271,35 @@ export default function SummaryPage() {
           </div>
         </Card>
 
+        <Card title="Score">
+          <div className="hero">
+            <div className="stat-value">Score: {round.shots.length}</div>
+            <div className="muted">Penalties: +{totalPenalties}</div>
+            <div className="stat-value">Adjusted Score: {adjustedScore}</div>
+          </div>
+        </Card>
+
+        <Card title="Primary Strength">
+          {strength ? (
+            <div className="hero">
+              <div className="stat-total">{strength.label}</div>
+              <div className="muted">
+                {strength.value >= 0 ? "+" : ""}
+                {strength.value.toFixed(2)} strokes
+              </div>
+            </div>
+          ) : (
+            <div className="muted">No clear strength this round.</div>
+          )}
+        </Card>
+
         <Card title="Primary Weakness">
           {weakness ? (
             <div className="hero">
               <div className="stat-total">{weakness.label}</div>
               <div className="muted">
-                Cost you {Math.abs(weakness.value).toFixed(2)} shots
+                {weakness.value >= 0 ? "+" : ""}
+                {weakness.value.toFixed(2)} strokes
               </div>
             </div>
           ) : (
@@ -277,13 +307,24 @@ export default function SummaryPage() {
           )}
         </Card>
 
-        {keyInsight && (
-          <Card title="Key Insight">
+        <Card title="Key Moments">
+          {keyMoments.gains.length === 0 && keyMoments.losses.length === 0 ? (
+            <div className="muted">No key moments yet.</div>
+          ) : (
             <div className="hero">
-              <div className="muted">{keyInsight.message}</div>
+              {keyMoments.gains.map((moment) => (
+                <div key={`gain-${moment.label}`} className="text-positive">
+                  {moment.label} (+{moment.sg.toFixed(2)})
+                </div>
+              ))}
+              {keyMoments.losses.map((moment) => (
+                <div key={`loss-${moment.label}`} className="text-negative">
+                  {moment.label} ({moment.sg.toFixed(2)})
+                </div>
+              ))}
             </div>
-          </Card>
-        )}
+          )}
+        </Card>
 
         <Card title="Cumulative SG">
           {cumulativeData.length === 0 ? (
@@ -343,6 +384,18 @@ export default function SummaryPage() {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card title="Hole Summary">
+          <div className="hero">
+            {holeSummaries.length === 0 && <div className="muted">No holes yet.</div>}
+            {holeSummaries.map((hole) => (
+              <div key={`hole-summary-${hole.hole}`} className="muted">
+                Hole {hole.hole}: {hole.shots} shots
+                {hole.penalties > 0 ? ` +${hole.penalties}` : ""}
+              </div>
+            ))}
           </div>
         </Card>
 
