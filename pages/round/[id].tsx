@@ -260,7 +260,7 @@ export default function RoundPage() {
       const nextStartLie = previewShot.endLie;
       setStartLie(nextStartLie);
       setStartDistance(String(endDistanceValue));
-      setEndLie("FAIRWAY");
+      setEndLie(nextStartLie);
       setPenaltyStrokes(0);
       setHoled(false);
       setNotes("");
