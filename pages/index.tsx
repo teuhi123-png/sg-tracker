@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import {
   deleteRound,
   exportRounds,
@@ -14,6 +15,7 @@ import Card from "../components/ui/Card";
 import Input from "../components/ui/Input";
 
 export default function Home() {
+  const router = useRouter();
   const [course, setCourse] = useState("");
   const [targetHoles, setTargetHoles] = useState<9 | 18>(18);
   const [rounds, setRounds] = useState<Round[]>([]);
@@ -46,6 +48,7 @@ export default function Home() {
     saveRound(round);
     refreshRounds();
     setCourse("");
+    void router.push(`/round/${round.id}`);
   }
 
   function markOnboardingSeen() {
