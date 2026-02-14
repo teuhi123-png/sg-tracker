@@ -205,6 +205,16 @@ export default function RoundPage() {
     setHoleNumber((h) => Math.min(Math.max(h, 1), targetHoles));
   }, [targetHoles]);
 
+  useEffect(() => {
+    if (!round) return;
+    setStartDistance("");
+    setEndDistance("");
+    setCustomPutts("");
+    setPuttsCount(null);
+    setShowCustomPutts(false);
+    setHoled(false);
+  }, [holeNumber, round?.id]);
+
   const roundComplete = previewShot.endDistance === 0 && displayHole === targetHoles;
   const canSave =
     (holeShots.length === 0 ? startDistance.trim() !== "" : true) &&
@@ -608,28 +618,6 @@ export default function RoundPage() {
                       </Button>
                     </div>
                   )}
-                </div>
-              )}
-              {puttingMode && (
-                <div className="pill-group" style={{ alignSelf: "flex-end" }}>
-                  <button
-                    type="button"
-                    className={`pill ${puttsCount ? "active" : ""}`.trim()}
-                    aria-pressed={Boolean(puttsCount)}
-                    disabled={isEnded}
-                    onClick={() => {
-                      if (puttsCount) {
-                        setPuttsCount(null);
-                        setHoled(false);
-                      } else {
-                        setPuttsCount(2);
-                        setHoled(true);
-                        setEndLie("GREEN");
-                      }
-                    }}
-                  >
-                    Holed
-                  </button>
                 </div>
               )}
 
