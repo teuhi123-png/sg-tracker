@@ -114,8 +114,6 @@ export default function RoundPage() {
     return inHole + 1;
   }, [round, holeNumber]);
 
-  const isFirstShotOfHole = nextShotNumber === 1;
-
   const isHoleComplete = useMemo(() => {
     if (!round) return false;
     return round.shots
@@ -147,6 +145,15 @@ export default function RoundPage() {
     return parseDistance(endDistance);
   }, [endDistance]);
 
+  const isFirstShotOfHole = nextShotNumber === 1;
+  const holeShots = useMemo(() => {
+    if (!round) return [];
+    return round.shots.filter((s) => s.holeNumber === holeNumber);
+  }, [round, holeNumber]);
+  const lastShotInHole = holeShots.length > 0 ? holeShots[holeShots.length - 1] : null;
+  const currentStartDistance =
+    holeShots.length > 0 ? lastShotInHole?.endDistance ?? 0 : startDistanceValue;
+
   const previewShot: Shot = {
     holeNumber,
     shotNumber: nextShotNumber,
@@ -170,7 +177,7 @@ export default function RoundPage() {
 
   const roundComplete = endLieGreen && displayHole === targetHoles;
   const canSave =
-    startDistance.trim() !== "" &&
+    (holeShots.length === 0 ? startDistance.trim() !== "" : true) &&
     ((puttingMode || endLieGreen) ? puttsCount !== null : endDistance.trim() !== "");
   const isFinalHole = holeNumber >= targetHoles;
   const finalHoleComplete = isFinalHole && isHoleComplete;
@@ -407,7 +414,9 @@ export default function RoundPage() {
               }}
             >
               <div style={{ minWidth: 160, flex: "1 1 180px" }}>
-                <div className="label">BALL AT {startDistanceValue}m</div>
+                <div className="label">
+                  {holeShots.length === 0 ? "ENTER START (m)" : `BALL AT ${currentStartDistance}m`}
+                </div>
                 <PillToggleGroup<Lie>
                   options={LIES.map((lie) => ({ value: lie }))}
                   value={startLie}
@@ -420,6 +429,29 @@ export default function RoundPage() {
                   ariaLabel="Current lie"
                 />
               </div>
+
+              {!puttingMode && holeShots.length === 0 && (
+                <label className="input-field" style={{ minWidth: 120, flex: "1 1 120px" }}>
+                  <div className="label">Start (m)</div>
+                  <input
+                    className="input"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={3}
+                    placeholder="e.g. 165"
+                    value={startDistance ?? ""}
+                    onChange={(e) => setStartDistance(clampDistanceText(e.target.value))}
+                    onFocus={() =>
+                      startDistanceRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+                    }
+                    disabled={isEnded}
+                    ref={startDistanceRef}
+                    onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                  />
+                  {startDistanceError && <div className="error">{startDistanceError}</div>}
+                </label>
+              )}
 
               {!puttingMode && (
                 <label className="input-field" style={{ minWidth: 120, flex: "1 1 120px" }}>
