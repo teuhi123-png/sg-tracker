@@ -11,7 +11,7 @@ import Input from "../../components/ui/Input";
 import PillToggleGroup from "../../components/ui/PillToggleGroup";
 import StatChip from "../../components/ui/StatChip";
 
-const LIES: Lie[] = ["TEE", "FAIRWAY", "ROUGH", "BUNKER", "RECOVERY", "FRINGE", "GREEN"];
+const LIES: Lie[] = ["FAIRWAY", "ROUGH", "BUNKER", "RECOVERY", "FRINGE", "GREEN"];
 
 export default function RoundPage() {
   const router = useRouter();
@@ -471,6 +471,13 @@ export default function RoundPage() {
                     />
                     {startDistanceError && <div className="error">{startDistanceError}</div>}
                   </label>
+                ) : puttingMode ? (
+                  <PillToggleGroup<Lie>
+                    options={[{ value: "GREEN" as Lie }]}
+                    value={"GREEN"}
+                    onChange={() => {}}
+                    ariaLabel="Current lie"
+                  />
                 ) : (
                   <PillToggleGroup<Lie>
                     options={LIES.map((lie) => ({ value: lie }))}
@@ -509,36 +516,35 @@ export default function RoundPage() {
                 </div>
               )}
 
-              <label className="input-field" style={{ minWidth: 120, flex: "1 1 120px" }}>
-                  <div className="label">
-                    {puttingMode || endLie === "GREEN" ? "Distance to hole (m)" : "End (m)"}
-                  </div>
-                <input
-                  className="input"
-                  type="text"
-                  inputMode={puttingMode || endLie === "GREEN" ? "decimal" : "numeric"}
-                  pattern={
-                    puttingMode || endLie === "GREEN" ? "[0-9]*[.]?[0-9]*" : "[0-9]*"
-                  }
-                  step={puttingMode || endLie === "GREEN" ? "0.1" : undefined}
-                  maxLength={puttingMode || endLie === "GREEN" ? 5 : 3}
-                  placeholder={puttingMode ? "e.g. 9.1" : endLie === "GREEN" ? "e.g. 12.3" : "e.g. 120"}
-                  value={endDistance ?? ""}
-                  onChange={(e) =>
-                    setEndDistance(
-                      clampDistanceText(e.target.value, puttingMode || endLie === "GREEN"),
-                    )
-                  }
-                  onBlur={() => setSaveNudge(true)}
-                  onFocus={() =>
-                    endDistanceRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
-                  }
-                  disabled={isEnded}
-                  ref={endDistanceRef}
-                  onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
-                />
-                {endDistanceError && <div className="error">{endDistanceError}</div>}
-              </label>
+              {!puttingMode && (
+                <label className="input-field" style={{ minWidth: 120, flex: "1 1 120px" }}>
+                  <div className="label">End (m)</div>
+                  <input
+                    className="input"
+                    type="text"
+                    inputMode={endLie === "GREEN" ? "decimal" : "numeric"}
+                    pattern={endLie === "GREEN" ? "[0-9]*[.]?[0-9]*" : "[0-9]*"}
+                    step={endLie === "GREEN" ? "0.1" : undefined}
+                    maxLength={endLie === "GREEN" ? 5 : 3}
+                    placeholder={endLie === "GREEN" ? "e.g. 12.3" : "e.g. 120"}
+                    value={endDistance ?? ""}
+                    onChange={(e) =>
+                      setEndDistance(clampDistanceText(e.target.value, endLie === "GREEN"))
+                    }
+                    onBlur={() => setSaveNudge(true)}
+                    onFocus={() =>
+                      endDistanceRef.current?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      })
+                    }
+                    disabled={isEnded}
+                    ref={endDistanceRef}
+                    onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                  />
+                  {endDistanceError && <div className="error">{endDistanceError}</div>}
+                </label>
+              )}
 
               {puttingMode && (
                 <div style={{ minWidth: 200, flex: "1 1 200px" }}>
@@ -553,6 +559,7 @@ export default function RoundPage() {
                         onClick={() => {
                           setPuttsCount(count);
                           setEndLie("GREEN");
+                          setHoled(true);
                         }}
                       >
                         {count}
@@ -593,6 +600,7 @@ export default function RoundPage() {
                           const count = Math.min(10, Math.max(4, parsed || 4));
                           setPuttsCount(count);
                           setEndLie("GREEN");
+                          setHoled(true);
                         }}
                         disabled={isEnded}
                       >
@@ -602,9 +610,26 @@ export default function RoundPage() {
                   )}
                 </div>
               )}
-              {puttingMode && endDistance.trim() === "" && (
-                <div className="muted" style={{ alignSelf: "flex-end" }}>
-                  Distance to hole optional.
+              {puttingMode && (
+                <div className="pill-group" style={{ alignSelf: "flex-end" }}>
+                  <button
+                    type="button"
+                    className={`pill ${puttsCount ? "active" : ""}`.trim()}
+                    aria-pressed={Boolean(puttsCount)}
+                    disabled={isEnded}
+                    onClick={() => {
+                      if (puttsCount) {
+                        setPuttsCount(null);
+                        setHoled(false);
+                      } else {
+                        setPuttsCount(2);
+                        setHoled(true);
+                        setEndLie("GREEN");
+                      }
+                    }}
+                  >
+                    Holed
+                  </button>
                 </div>
               )}
 
