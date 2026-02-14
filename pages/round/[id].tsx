@@ -36,7 +36,7 @@ export default function RoundPage() {
   const [puttsCount, setPuttsCount] = useState<number | null>(null);
   const [saveNudge, setSaveNudge] = useState(false);
   const puttingMode = startLie === "GREEN";
-  const endLieGreen = holed || endLie === "GREEN";
+  const endLieGreen = puttingMode && puttsCount !== null;
 
   const startDistanceRef = useRef<HTMLInputElement>(null);
   const endDistanceRef = useRef<HTMLInputElement>(null);
@@ -152,8 +152,8 @@ export default function RoundPage() {
     shotNumber: nextShotNumber,
     startLie,
     startDistance: startDistanceValue,
-    endLie: holed ? "GREEN" : endLie,
-    endDistance: holed ? 0 : endDistanceValue,
+    endLie: endLieGreen ? "GREEN" : startLie,
+    endDistance: endLieGreen ? 0 : endDistanceValue,
     penaltyStrokes,
     putts: (puttingMode || endLieGreen) && puttsCount ? puttsCount : undefined,
   };
@@ -168,10 +168,10 @@ export default function RoundPage() {
     setHoleNumber((h) => Math.min(Math.max(h, 1), targetHoles));
   }, [targetHoles]);
 
-  const roundComplete = holed && displayHole === targetHoles;
+  const roundComplete = endLieGreen && displayHole === targetHoles;
   const canSave =
     startDistance.trim() !== "" &&
-    ((puttingMode || endLieGreen) ? puttsCount !== null : holed || endDistance.trim() !== "");
+    ((puttingMode || endLieGreen) ? puttsCount !== null : endDistance.trim() !== "");
   const isFinalHole = holeNumber >= targetHoles;
   const finalHoleComplete = isFinalHole && isHoleComplete;
 
@@ -230,13 +230,13 @@ export default function RoundPage() {
           : `Last shot: ${previewShot.startDistance}${summaryStartUnit} → ${previewShot.endDistance}${summaryEndUnit}`;
     setLastShotSummary(summary);
 
-    if ((previewShot.endDistance === 0 || holed) && isFinalHole) {
+    if (previewShot.endDistance === 0 && isFinalHole) {
       setShowEndRoundModal(true);
       setShowErrors(false);
       return;
     }
 
-    if (previewShot.endDistance === 0 || holed) {
+    if (previewShot.endDistance === 0) {
       setHoleNumber((h) => Math.min(targetHoles, h + 1));
       setStartLie("TEE");
       setEndLie("FAIRWAY");
@@ -252,7 +252,7 @@ export default function RoundPage() {
       const nextStartLie = previewShot.endLie;
       setStartLie(nextStartLie);
       setStartDistance(String(endDistanceValue));
-      setEndLie(nextStartLie === "GREEN" ? "GREEN" : "FAIRWAY");
+      setEndLie("FAIRWAY");
       setPenaltyStrokes(0);
       setHoled(false);
       setNotes("");
@@ -407,7 +407,7 @@ export default function RoundPage() {
               }}
             >
               <div style={{ minWidth: 160, flex: "1 1 180px" }}>
-                <div className="label">FROM → TO</div>
+                <div className="label">BALL AT {startDistanceValue}m</div>
                 <PillToggleGroup<Lie>
                   options={LIES.map((lie) => ({ value: lie }))}
                   value={startLie}
@@ -415,60 +415,13 @@ export default function RoundPage() {
                     if (isEnded) return;
                     setStartLie(value);
                     startDistanceRef.current?.focus();
+                    startDistanceRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
                   }}
-                  ariaLabel="Start lie"
+                  ariaLabel="Current lie"
                 />
               </div>
 
-              {!puttingMode && isFirstShotOfHole && (
-                <label className="input-field" style={{ minWidth: 120, flex: "1 1 120px" }}>
-                  <div className="label">Start (m)</div>
-                  <input
-                    className="input"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={3}
-                    placeholder="e.g. 145"
-                    value={startDistance ?? ""}
-                    onChange={(e) => setStartDistance(clampDistanceText(e.target.value))}
-                    onFocus={() =>
-                      startDistanceRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
-                    }
-                    disabled={isEnded}
-                    ref={startDistanceRef}
-                    onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
-                  />
-                  {startDistanceError && <div className="error">{startDistanceError}</div>}
-                </label>
-              )}
-              {!puttingMode && !isFirstShotOfHole && (
-                <div style={{ minWidth: 140, flex: "1 1 140px" }}>
-                  <div className="label">Ball at {startDistanceValue}m</div>
-                </div>
-              )}
-
-              <div style={{ minWidth: 160, flex: "1 1 160px" }}>
-                <div className="label">TO</div>
-                <PillToggleGroup<Lie>
-                  options={LIES.map((lie) => ({ value: lie }))}
-                  value={holed ? "GREEN" : endLie}
-                  onChange={(value) => {
-                    if (isEnded) return;
-                    setEndLie(value);
-                    if (holed) setHoled(false);
-                    if (value === "GREEN") {
-                      setPuttsCount(null);
-                    } else {
-                      setPuttsCount(null);
-                      endDistanceRef.current?.focus();
-                    }
-                  }}
-                  ariaLabel="End lie"
-                />
-              </div>
-
-              {!puttingMode && !endLieGreen && (
+              {!puttingMode && (
                 <label className="input-field" style={{ minWidth: 120, flex: "1 1 120px" }}>
                   <div className="label">End (m)</div>
                   <input
@@ -492,7 +445,7 @@ export default function RoundPage() {
                 </label>
               )}
 
-              {(puttingMode || endLieGreen) && (
+              {puttingMode && (
                 <div style={{ minWidth: 200, flex: "1 1 200px" }}>
                   <div className="label">Putts</div>
                   <div className="pill-group">
