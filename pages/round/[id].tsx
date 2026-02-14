@@ -154,15 +154,22 @@ export default function RoundPage() {
   const currentStartDistance =
     holeShots.length > 0 ? lastShotInHole?.endDistance ?? 0 : startDistanceValue;
 
+  const endLieForShot = puttingMode
+    ? "GREEN"
+    : holeShots.length === 0
+      ? endLie
+      : startLie;
+  const endDistanceForShot = puttingMode ? 0 : endDistanceValue;
+
   const previewShot: Shot = {
     holeNumber,
     shotNumber: nextShotNumber,
     startLie: holeShots.length === 0 ? "TEE" : startLie,
     startDistance: startDistanceValue,
-    endLie: endLieGreen ? "GREEN" : startLie,
-    endDistance: endLieGreen ? 0 : endDistanceValue,
+    endLie: endLieForShot,
+    endDistance: endDistanceForShot,
     penaltyStrokes,
-    putts: (puttingMode || endLieGreen) && puttsCount ? puttsCount : undefined,
+    putts: puttingMode && puttsCount ? puttsCount : undefined,
   };
 
   const previewSg = useMemo(() => calculateStrokesGained(previewShot), [previewShot]);
@@ -175,10 +182,10 @@ export default function RoundPage() {
     setHoleNumber((h) => Math.min(Math.max(h, 1), targetHoles));
   }, [targetHoles]);
 
-  const roundComplete = endLieGreen && displayHole === targetHoles;
+  const roundComplete = previewShot.endDistance === 0 && displayHole === targetHoles;
   const canSave =
     (holeShots.length === 0 ? startDistance.trim() !== "" : true) &&
-    ((puttingMode || endLieGreen) ? puttsCount !== null : endDistance.trim() !== "");
+    (puttingMode ? puttsCount !== null : endDistance.trim() !== "");
   const isFinalHole = holeNumber >= targetHoles;
   const finalHoleComplete = isFinalHole && isHoleComplete;
 
