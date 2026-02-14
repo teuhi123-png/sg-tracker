@@ -41,6 +41,9 @@ export default function RoundPage() {
   const [shotsExpanded, setShotsExpanded] = useState(false);
   const [expandedHoles, setExpandedHoles] = useState<Record<number, boolean>>({});
 
+  const roundEnded = Boolean(round?.endedAt);
+  const isEnded = roundEnded;
+
   useEffect(() => {
     if (!router.isReady || !roundId) return;
     const found = getRound(roundId);
@@ -56,6 +59,18 @@ export default function RoundPage() {
     if (!puttingMode) return;
     setEndLie("GREEN");
   }, [puttingMode]);
+
+  useEffect(() => {
+    if (isEnded) return;
+    if (!puttingMode) startDistanceRef.current?.focus();
+  }, [startLie, puttingMode, isEnded]);
+
+  useEffect(() => {
+    if (isEnded) return;
+    if (endLie !== "GREEN" && !puttingMode) {
+      endDistanceRef.current?.focus();
+    }
+  }, [endLie, puttingMode, isEnded]);
 
   const nextShotNumber = useMemo(() => {
     if (!round) return 1;
@@ -116,8 +131,6 @@ export default function RoundPage() {
 
   const roundComplete = holed && displayHole === targetHoles;
   const canSave = startDistance.trim() !== "" && (holed || endDistance.trim() !== "");
-  const roundEnded = Boolean(round?.endedAt);
-  const isEnded = roundEnded;
   const isFinalHole = holeNumber >= targetHoles;
   const finalHoleComplete = isFinalHole && isHoleComplete;
 
@@ -336,7 +349,7 @@ export default function RoundPage() {
               style={{
                 display: "flex",
                 flexWrap: "wrap",
-                gap: 10,
+                gap: 8,
                 alignItems: "flex-start",
               }}
             >
@@ -354,7 +367,7 @@ export default function RoundPage() {
               </div>
 
               {!puttingMode && (
-                <label className="input-field" style={{ minWidth: 140, flex: "1 1 140px" }}>
+                <label className="input-field" style={{ minWidth: 120, flex: "1 1 120px" }}>
                   <div className="label">{startDistanceLabel}</div>
                   <input
                     className="input"
@@ -374,7 +387,7 @@ export default function RoundPage() {
               )}
 
               {!puttingMode && (
-                <div style={{ minWidth: 160, flex: "1 1 180px" }}>
+                <div style={{ minWidth: 160, flex: "1 1 160px" }}>
                   <div className="label">Result</div>
                   <PillToggleGroup<Lie>
                     options={LIES.map((lie) => ({ value: lie }))}
@@ -383,6 +396,9 @@ export default function RoundPage() {
                       if (isEnded) return;
                       setEndLie(value);
                       if (holed) setHoled(false);
+                      if (value !== "GREEN") {
+                        endDistanceRef.current?.focus();
+                      }
                     }}
                     ariaLabel="End lie"
                   />
@@ -390,7 +406,7 @@ export default function RoundPage() {
               )}
 
               {!puttingMode && !holed && endLie !== "GREEN" && (
-                <label className="input-field" style={{ minWidth: 140, flex: "1 1 140px" }}>
+                <label className="input-field" style={{ minWidth: 120, flex: "1 1 120px" }}>
                   <div className="label">{endDistanceLabel}</div>
                   <input
                     className="input"
@@ -487,35 +503,6 @@ export default function RoundPage() {
                 </div>
               )}
 
-              <div style={{ minWidth: 180 }}>
-                <div className="label">Penalty shots</div>
-                <div className="pill-group">
-                  <button
-                    type="button"
-                    className={`pill ${penaltyStrokes === 0 ? "active" : ""}`.trim()}
-                    disabled={isEnded}
-                    onClick={() => setPenaltyStrokes(0)}
-                  >
-                    0
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill ${penaltyStrokes === 1 ? "active" : ""}`.trim()}
-                    disabled={isEnded}
-                    onClick={() => setPenaltyStrokes(1)}
-                  >
-                    +1
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill ${penaltyStrokes === 2 ? "active" : ""}`.trim()}
-                    disabled={isEnded}
-                    onClick={() => setPenaltyStrokes(2)}
-                  >
-                    +2
-                  </button>
-                </div>
-              </div>
             </div>
 
             {lastShotSummary && <div className="muted">{lastShotSummary}</div>}
@@ -581,6 +568,32 @@ export default function RoundPage() {
                 </>
               ) : (
                 <>
+                  <div className="pill-group">
+                    <button
+                      type="button"
+                      className={`pill ${penaltyStrokes === 0 ? "active" : ""}`.trim()}
+                      disabled={isEnded}
+                      onClick={() => setPenaltyStrokes(0)}
+                    >
+                      P0
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill ${penaltyStrokes === 1 ? "active" : ""}`.trim()}
+                      disabled={isEnded}
+                      onClick={() => setPenaltyStrokes(1)}
+                    >
+                      P+1
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill ${penaltyStrokes === 2 ? "active" : ""}`.trim()}
+                      disabled={isEnded}
+                      onClick={() => setPenaltyStrokes(2)}
+                    >
+                      P+2
+                    </button>
+                  </div>
                   <Button
                     type="submit"
                     disabled={roundComplete || !canSave || isHoleComplete || roundEnded}
@@ -712,6 +725,32 @@ export default function RoundPage() {
           </Link>
         ) : finalHoleComplete ? (
           <>
+            <div className="pill-group">
+              <button
+                type="button"
+                className={`pill ${penaltyStrokes === 0 ? "active" : ""}`.trim()}
+                disabled={isEnded}
+                onClick={() => setPenaltyStrokes(0)}
+              >
+                P0
+              </button>
+              <button
+                type="button"
+                className={`pill ${penaltyStrokes === 1 ? "active" : ""}`.trim()}
+                disabled={isEnded}
+                onClick={() => setPenaltyStrokes(1)}
+              >
+                P+1
+              </button>
+              <button
+                type="button"
+                className={`pill ${penaltyStrokes === 2 ? "active" : ""}`.trim()}
+                disabled={isEnded}
+                onClick={() => setPenaltyStrokes(2)}
+              >
+                P+2
+              </button>
+            </div>
             <Button type="button" onClick={handleEndRound}>
               Finish round
             </Button>
@@ -721,6 +760,32 @@ export default function RoundPage() {
           </>
         ) : (
           <>
+            <div className="pill-group">
+              <button
+                type="button"
+                className={`pill ${penaltyStrokes === 0 ? "active" : ""}`.trim()}
+                disabled={isEnded}
+                onClick={() => setPenaltyStrokes(0)}
+              >
+                P0
+              </button>
+              <button
+                type="button"
+                className={`pill ${penaltyStrokes === 1 ? "active" : ""}`.trim()}
+                disabled={isEnded}
+                onClick={() => setPenaltyStrokes(1)}
+              >
+                P+1
+              </button>
+              <button
+                type="button"
+                className={`pill ${penaltyStrokes === 2 ? "active" : ""}`.trim()}
+                disabled={isEnded}
+                onClick={() => setPenaltyStrokes(2)}
+              >
+                P+2
+              </button>
+            </div>
             <Button type="button" variant="secondary" onClick={handleUndo}>
               Undo last shot
             </Button>
