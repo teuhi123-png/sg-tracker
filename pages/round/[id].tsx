@@ -34,6 +34,7 @@ export default function RoundPage() {
   const [showCustomPutts, setShowCustomPutts] = useState(false);
   const [customPutts, setCustomPutts] = useState<string>("");
   const [puttsCount, setPuttsCount] = useState<number | null>(null);
+  const [saveNudge, setSaveNudge] = useState(false);
   const puttingMode = endLie === "GREEN" || startLie === "GREEN";
 
   const startDistanceRef = useRef<HTMLInputElement>(null);
@@ -93,6 +94,12 @@ export default function RoundPage() {
       endDistanceRef.current?.focus();
     }
   }, [endLie, puttingMode, isEnded]);
+
+  useEffect(() => {
+    if (!saveNudge) return;
+    const t = setTimeout(() => setSaveNudge(false), 900);
+    return () => clearTimeout(t);
+  }, [saveNudge]);
 
   const nextShotNumber = useMemo(() => {
     if (!round) return 1;
@@ -459,6 +466,7 @@ export default function RoundPage() {
                     placeholder="e.g. 120"
                     value={endDistance ?? ""}
                     onChange={(e) => setEndDistance(clampDistanceText(e.target.value))}
+                    onBlur={() => setSaveNudge(true)}
                     disabled={isEnded}
                     ref={endDistanceRef}
                     onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
@@ -768,7 +776,10 @@ export default function RoundPage() {
         </Card>
       </div>
 
-      <div className="mobile-action-bar" style={{ bottom: keyboardOffsetPx }}>
+      <div
+        className="mobile-action-bar"
+        style={{ bottom: `calc(env(safe-area-inset-bottom) + ${keyboardOffsetPx}px)` }}
+      >
         {isEnded ? (
           <Link href={`/summary/${round.id}`} className="pill">
             View summary
@@ -843,6 +854,7 @@ export default function RoundPage() {
               type="button"
               onClick={handleSaveShot}
               disabled={roundComplete || !canSave || isHoleComplete || roundEnded}
+              className={saveNudge ? "save-nudge" : undefined}
             >
               Save shot
             </Button>

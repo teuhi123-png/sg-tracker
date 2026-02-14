@@ -4,7 +4,7 @@ export const containerStyle: CSSProperties = {
   fontFamily:
     "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
   background: "#f7f7f8",
-  minHeight: "100vh",
+  minHeight: "100dvh",
   padding: 24,
 };
 

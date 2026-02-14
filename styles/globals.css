@@ -43,7 +43,7 @@ a:hover {
 }
 
 .page {
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 24px;
 }
 
@@ -357,7 +357,7 @@ a:hover {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: env(safe-area-inset-bottom);
     gap: 10px;
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
     background: #0f1115;
@@ -527,7 +527,7 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   overflow: hidden;
   pointer-events: auto;
 }
@@ -662,4 +662,18 @@ a:hover {
 
 .holed-cta-wrap {
   margin-top: 10px;
+}
+
+.save-nudge {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+}
+
+@media (max-width: 640px) {
+  .pill-group {
+    gap: 6px;
+  }
+  .pill {
+    min-height: 38px;
+    padding: 4px 10px;
+  }
 }
