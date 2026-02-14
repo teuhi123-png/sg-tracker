@@ -157,7 +157,7 @@ export default function RoundPage() {
   const previewShot: Shot = {
     holeNumber,
     shotNumber: nextShotNumber,
-    startLie,
+    startLie: holeShots.length === 0 ? "TEE" : startLie,
     startDistance: startDistanceValue,
     endLie: endLieGreen ? "GREEN" : startLie,
     endDistance: endLieGreen ? 0 : endDistanceValue,
@@ -415,42 +415,67 @@ export default function RoundPage() {
             >
               <div style={{ minWidth: 160, flex: "1 1 180px" }}>
                 <div className="label">
-                  {holeShots.length === 0 ? "ENTER START (m)" : `BALL AT ${currentStartDistance}m`}
+                  {holeShots.length === 0 ? "START (m)" : `BALL AT ${currentStartDistance}m`}
                 </div>
-                <PillToggleGroup<Lie>
-                  options={LIES.map((lie) => ({ value: lie }))}
-                  value={startLie}
-                  onChange={(value) => {
-                    if (isEnded) return;
-                    setStartLie(value);
-                    startDistanceRef.current?.focus();
-                    startDistanceRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                  ariaLabel="Current lie"
-                />
+                {holeShots.length === 0 ? (
+                  <label className="input-field">
+                    <input
+                      className="input"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={3}
+                      placeholder="e.g. 165"
+                      value={startDistance ?? ""}
+                      onChange={(e) => setStartDistance(clampDistanceText(e.target.value))}
+                      onFocus={() =>
+                        startDistanceRef.current?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        })
+                      }
+                      disabled={isEnded}
+                      ref={startDistanceRef}
+                      onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                    />
+                    {startDistanceError && <div className="error">{startDistanceError}</div>}
+                  </label>
+                ) : (
+                  <PillToggleGroup<Lie>
+                    options={LIES.map((lie) => ({ value: lie }))}
+                    value={startLie}
+                    onChange={(value) => {
+                      if (isEnded) return;
+                      setStartLie(value);
+                      startDistanceRef.current?.focus();
+                      startDistanceRef.current?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      });
+                    }}
+                    ariaLabel="Current lie"
+                  />
+                )}
               </div>
 
               {!puttingMode && holeShots.length === 0 && (
-                <label className="input-field" style={{ minWidth: 120, flex: "1 1 120px" }}>
-                  <div className="label">Start (m)</div>
-                  <input
-                    className="input"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={3}
-                    placeholder="e.g. 165"
-                    value={startDistance ?? ""}
-                    onChange={(e) => setStartDistance(clampDistanceText(e.target.value))}
-                    onFocus={() =>
-                      startDistanceRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
-                    }
-                    disabled={isEnded}
-                    ref={startDistanceRef}
-                    onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                <div style={{ minWidth: 160, flex: "1 1 160px" }}>
+                  <div className="label">TO</div>
+                  <PillToggleGroup<Lie>
+                    options={LIES.map((lie) => ({ value: lie }))}
+                    value={endLie}
+                    onChange={(value) => {
+                      if (isEnded) return;
+                      setEndLie(value);
+                      endDistanceRef.current?.focus();
+                      endDistanceRef.current?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      });
+                    }}
+                    ariaLabel="End lie"
                   />
-                  {startDistanceError && <div className="error">{startDistanceError}</div>}
-                </label>
+                </div>
               )}
 
               {!puttingMode && (
