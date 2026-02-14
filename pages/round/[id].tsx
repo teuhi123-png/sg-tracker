@@ -33,13 +33,15 @@ export default function RoundPage() {
   const [lastShotSummary, setLastShotSummary] = useState<string>("");
   const [showCustomPutts, setShowCustomPutts] = useState(false);
   const [customPutts, setCustomPutts] = useState<string>("");
-  const puttingMode = startLie === "GREEN";
+  const [puttsCount, setPuttsCount] = useState<number | null>(null);
+  const puttingMode = endLie === "GREEN" || startLie === "GREEN";
 
   const startDistanceRef = useRef<HTMLInputElement>(null);
   const endDistanceRef = useRef<HTMLInputElement>(null);
   const lastEndDistanceRef = useRef("");
   const [shotsExpanded, setShotsExpanded] = useState(false);
   const [expandedHoles, setExpandedHoles] = useState<Record<number, boolean>>({});
+  const [keyboardOffsetPx, setKeyboardOffsetPx] = useState(0);
 
   const roundEnded = Boolean(round?.endedAt);
   const isEnded = roundEnded;
@@ -59,6 +61,26 @@ export default function RoundPage() {
     if (!puttingMode) return;
     setEndLie("GREEN");
   }, [puttingMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.visualViewport) return;
+    const viewport = window.visualViewport;
+    const update = () => {
+      const offset = Math.max(
+        0,
+        window.innerHeight - viewport.height - viewport.offsetTop,
+      );
+      setKeyboardOffsetPx(offset);
+    };
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, []);
 
   useEffect(() => {
     if (isEnded) return;
@@ -117,6 +139,7 @@ export default function RoundPage() {
     endLie: holed ? "GREEN" : endLie,
     endDistance: holed ? 0 : endDistanceValue,
     penaltyStrokes,
+    putts: puttingMode && puttsCount ? puttsCount : undefined,
   };
 
   const previewSg = useMemo(() => calculateStrokesGained(previewShot), [previewShot]);
@@ -130,7 +153,9 @@ export default function RoundPage() {
   }, [targetHoles]);
 
   const roundComplete = holed && displayHole === targetHoles;
-  const canSave = startDistance.trim() !== "" && (holed || endDistance.trim() !== "");
+  const canSave =
+    startDistance.trim() !== "" &&
+    (puttingMode ? puttsCount !== null : holed || endDistance.trim() !== "");
   const isFinalHole = holeNumber >= targetHoles;
   const finalHoleComplete = isFinalHole && isHoleComplete;
 
@@ -182,9 +207,11 @@ export default function RoundPage() {
     const summaryStartUnit = previewShot.startLie === "GREEN" ? "ft" : "m";
     const summaryEndUnit = previewShot.endLie === "GREEN" ? "ft" : "m";
     const summary =
-      previewShot.endLie === "GREEN" && previewShot.endDistance === 0
-        ? `Last shot: ${previewShot.startDistance}${summaryStartUnit} → holed`
-        : `Last shot: ${previewShot.startDistance}${summaryStartUnit} → ${previewShot.endDistance}${summaryEndUnit}`;
+      puttingMode && puttsCount
+        ? `Last shot: ${puttsCount} putt${puttsCount === 1 ? "" : "s"}`
+        : previewShot.endLie === "GREEN" && previewShot.endDistance === 0
+          ? `Last shot: ${previewShot.startDistance}${summaryStartUnit} → holed`
+          : `Last shot: ${previewShot.startDistance}${summaryStartUnit} → ${previewShot.endDistance}${summaryEndUnit}`;
     setLastShotSummary(summary);
 
     if ((previewShot.endDistance === 0 || holed) && isFinalHole) {
@@ -203,6 +230,9 @@ export default function RoundPage() {
       setHoled(false);
       setShowAdvanced(false);
       setNotes("");
+      setPuttsCount(null);
+      setShowCustomPutts(false);
+      setCustomPutts("");
       startDistanceRef.current?.focus();
     } else {
       const nextStartLie = previewShot.endLie;
@@ -213,6 +243,9 @@ export default function RoundPage() {
       setPenaltyStrokes(0);
       setHoled(false);
       setNotes("");
+      setPuttsCount(null);
+      setShowCustomPutts(false);
+      setCustomPutts("");
       if (nextStartLie === "GREEN") {
         endDistanceRef.current?.focus();
       } else {
@@ -282,39 +315,46 @@ export default function RoundPage() {
 
   return (
       <div className="page mobile-action-spacer">
-        <div className="top-header">
-          <div className="top-row container header-wrap">
-            <div className="header-left">
-              <div className="h1">Round entry</div>
-              <div className="course-name">{round.courseName || "Unnamed course"}</div>
-              {!roundEnded && (
-                <div className="muted">
-                  Hole {displayHole} of {targetHoles}
-                </div>
-              )}
-              {roundEnded && <div className="badge">Round complete</div>}
+      <div className="top-header">
+        <div className="top-row container header-wrap">
+          <div className="header-left">
+            <div className="h1">Round entry</div>
+            <div className="course-name">
+              {round.courseName || "Unnamed course"} · Hole {displayHole} of {targetHoles}
             </div>
-            <div className="nav-links header-actions">
-              <Link href="/" className="pill">
-                Back
-              </Link>
+            {!roundEnded && (
+              <div className="muted">
+                Play mode
+              </div>
+            )}
+            {roundEnded && <div className="badge">Round complete</div>}
+          </div>
+          <div className="nav-links header-actions">
+            <Link href="/" className="pill">
+              Back
+            </Link>
+            <Link href={`/summary/${round.id}`} className="pill">
+              Summary
+            </Link>
+            {isEnded ? (
               <Link href={`/summary/${round.id}`} className="pill">
-                Summary
+                View summary
               </Link>
-              {isEnded ? (
-                <Link href={`/summary/${round.id}`} className="pill">
-                  View summary
-                </Link>
-              ) : (
-                <button type="button" className="pill" onClick={handleEndRound}>
-                  End round
-                </button>
-              )}
-            </div>
+            ) : (
+              <button type="button" className="pill" onClick={handleEndRound}>
+                End round
+              </button>
+            )}
           </div>
         </div>
+      </div>
 
-        <div className="container">
+        <div
+          className="container"
+          style={{
+            paddingBottom: 140 + keyboardOffsetPx,
+          }}
+        >
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -361,6 +401,7 @@ export default function RoundPage() {
                   onChange={(value) => {
                     if (isEnded) return;
                     setStartLie(value);
+                    startDistanceRef.current?.focus();
                   }}
                   ariaLabel="Start lie"
                 />
@@ -368,7 +409,7 @@ export default function RoundPage() {
 
               {!puttingMode && (
                 <label className="input-field" style={{ minWidth: 120, flex: "1 1 120px" }}>
-                  <div className="label">{startDistanceLabel}</div>
+                  <div className="label">Start (m)</div>
                   <input
                     className="input"
                     type="text"
@@ -386,28 +427,29 @@ export default function RoundPage() {
                 </label>
               )}
 
-              {!puttingMode && (
-                <div style={{ minWidth: 160, flex: "1 1 160px" }}>
-                  <div className="label">Result</div>
-                  <PillToggleGroup<Lie>
-                    options={LIES.map((lie) => ({ value: lie }))}
-                    value={holed ? "GREEN" : endLie}
-                    onChange={(value) => {
-                      if (isEnded) return;
-                      setEndLie(value);
-                      if (holed) setHoled(false);
-                      if (value !== "GREEN") {
-                        endDistanceRef.current?.focus();
-                      }
-                    }}
-                    ariaLabel="End lie"
-                  />
-                </div>
-              )}
+              <div style={{ minWidth: 160, flex: "1 1 160px" }}>
+                <div className="label">Result</div>
+                <PillToggleGroup<Lie>
+                  options={LIES.map((lie) => ({ value: lie }))}
+                  value={holed ? "GREEN" : endLie}
+                  onChange={(value) => {
+                    if (isEnded) return;
+                    setEndLie(value);
+                    if (holed) setHoled(false);
+                    if (value === "GREEN") {
+                      setPuttsCount(null);
+                    } else {
+                      setPuttsCount(null);
+                      endDistanceRef.current?.focus();
+                    }
+                  }}
+                  ariaLabel="End lie"
+                />
+              </div>
 
-              {!puttingMode && !holed && endLie !== "GREEN" && (
+              {!puttingMode && !holed && (
                 <label className="input-field" style={{ minWidth: 120, flex: "1 1 120px" }}>
-                  <div className="label">{endDistanceLabel}</div>
+                  <div className="label">End (m)</div>
                   <input
                     className="input"
                     type="text"
@@ -435,7 +477,12 @@ export default function RoundPage() {
                         type="button"
                         className="pill"
                         disabled={isEnded}
-                        onClick={() => handleSavePutt(count)}
+                        onClick={() => {
+                          setPuttsCount(count);
+                          setHoled(true);
+                          setEndLie("GREEN");
+                          setEndDistance("0");
+                        }}
                       >
                         {count}
                       </button>
@@ -471,11 +518,14 @@ export default function RoundPage() {
                         onClick={() => {
                           const parsed = parseDistance(customPutts);
                           const count = Math.min(10, Math.max(4, parsed || 4));
-                          handleSavePutt(count);
+                          setPuttsCount(count);
+                          setHoled(true);
+                          setEndLie("GREEN");
+                          setEndDistance("0");
                         }}
                         disabled={isEnded}
                       >
-                        Save putts
+                        Use putts
                       </Button>
                     </div>
                   )}
@@ -718,7 +768,7 @@ export default function RoundPage() {
         </Card>
       </div>
 
-      <div className="mobile-action-bar">
+      <div className="mobile-action-bar" style={{ bottom: keyboardOffsetPx }}>
         {isEnded ? (
           <Link href={`/summary/${round.id}`} className="pill">
             View summary
