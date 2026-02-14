@@ -114,6 +114,8 @@ export default function RoundPage() {
     return inHole + 1;
   }, [round, holeNumber]);
 
+  const isFirstShotOfHole = nextShotNumber === 1;
+
   const isHoleComplete = useMemo(() => {
     if (!round) return false;
     return round.shots
@@ -237,9 +239,7 @@ export default function RoundPage() {
     if (previewShot.endDistance === 0 || holed) {
       setHoleNumber((h) => Math.min(targetHoles, h + 1));
       setStartLie("TEE");
-      setStartDistance("");
       setEndLie("FAIRWAY");
-      setEndDistance("");
       setPenaltyStrokes(0);
       setHoled(false);
       setShowAdvanced(false);
@@ -253,7 +253,6 @@ export default function RoundPage() {
       setStartLie(nextStartLie);
       setStartDistance(String(endDistanceValue));
       setEndLie(nextStartLie === "GREEN" ? "GREEN" : "FAIRWAY");
-      setEndDistance("");
       setPenaltyStrokes(0);
       setHoled(false);
       setNotes("");
@@ -421,7 +420,7 @@ export default function RoundPage() {
                 />
               </div>
 
-              {!puttingMode && (
+              {!puttingMode && isFirstShotOfHole && (
                 <label className="input-field" style={{ minWidth: 120, flex: "1 1 120px" }}>
                   <div className="label">Start (m)</div>
                   <input
@@ -442,6 +441,11 @@ export default function RoundPage() {
                   />
                   {startDistanceError && <div className="error">{startDistanceError}</div>}
                 </label>
+              )}
+              {!puttingMode && !isFirstShotOfHole && (
+                <div style={{ minWidth: 140, flex: "1 1 140px" }}>
+                  <div className="label">Ball at {startDistanceValue}m</div>
+                </div>
               )}
 
               <div style={{ minWidth: 160, flex: "1 1 160px" }}>
