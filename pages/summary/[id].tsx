@@ -447,8 +447,18 @@ export default function SummaryPage() {
                         {hole.shots.map((shot) => {
                           const shotKey = `${hole.holeNumber}-${shot.shotNumber}`;
                           const expanded = Boolean(expandedShots[shotKey]);
+                          const sgBorderColor =
+                            shot.strokesGained === null || shot.strokesGained === 0
+                              ? "transparent"
+                              : shot.strokesGained > 0
+                                ? "#16a34a"
+                                : "#dc2626";
                           return (
-                            <div key={`shot-row-${shotKey}`} className="card">
+                            <div
+                              key={`shot-row-${shotKey}`}
+                              className="card"
+                              style={{ borderLeft: `4px solid ${sgBorderColor}` }}
+                            >
                               <button
                                 type="button"
                                 className="row"
