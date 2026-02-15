@@ -525,10 +525,6 @@ export default function RoundPage() {
                 P+2
               </button>
             </div>
-            <div className="muted">
-              debug: canSave={String(canSave)} · endDistance={String(endDistanceValue)} · toLie=
-              {endLieSelection ?? "null"}
-            </div>
             <Button
               type="button"
               onClick={handleSaveShot}
