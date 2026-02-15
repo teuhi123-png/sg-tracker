@@ -461,14 +461,8 @@ export default function RoundPage() {
         zIndex: 999,
         pointerEvents: "auto",
       }}
-      onTouchStartCapture={(e) => e.stopPropagation()}
-      onPointerDownCapture={(e) => e.stopPropagation()}
     >
-      <div
-        className="mobile-action-bar"
-        onTouchStartCapture={(e) => e.stopPropagation()}
-        onPointerDownCapture={(e) => e.stopPropagation()}
-      >
+      <div className="mobile-action-bar">
         {isEnded ? (
           <Link href={`/summary/${round.id}`} className="pill">
             View summary
