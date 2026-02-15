@@ -625,7 +625,8 @@ a:hover {
 
 .home-header {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  margin-top: -6px;
 }
 
 .home-header-row {
@@ -696,6 +697,16 @@ a:hover {
   font-size: 12px;
   font-weight: 600;
   color: #d1d5db;
+}
+
+.home-snapshot-chip.positive {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: rgba(22, 163, 74, 0.3);
+}
+
+.home-snapshot-chip.negative {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.3);
 }
 
 .home-snapshot-actions {
@@ -780,6 +791,41 @@ a:hover {
   gap: 4px;
 }
 
+.home-round-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-round-sg-badge {
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+
+.home-round-sg-badge.positive {
+  color: #86efac;
+  border-color: rgba(22, 163, 74, 0.35);
+  background: rgba(22, 163, 74, 0.12);
+}
+
+.home-round-sg-badge.negative {
+  color: #fca5a5;
+  border-color: rgba(220, 38, 38, 0.35);
+  background: rgba(220, 38, 38, 0.12);
+}
+
+.home-round-sg-badge.neutral {
+  color: #d1d5db;
+}
+
 .home-round-actions-toggle {
   min-width: 44px;
   min-height: 36px;
@@ -813,6 +859,10 @@ a:hover {
     font-size: 24px;
   }
 
+  .home-header {
+    margin-top: -4px;
+  }
+
   .home-snapshot-total {
     font-size: 38px;
   }
@@ -823,6 +873,10 @@ a:hover {
 
   .home-round-actions-grid {
     grid-template-columns: 1fr;
+  }
+
+  .home-round-right {
+    gap: 6px;
   }
 }
 
