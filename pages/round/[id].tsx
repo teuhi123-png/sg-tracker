@@ -438,39 +438,40 @@ export default function RoundPage() {
 
   return (
       <div className="page mobile-action-spacer">
-      <div className="top-header">
-        <div className="top-row container header-wrap">
-          <div className="header-left">
-            <div className="h1">Round entry</div>
-            <div className="course-name">
-              {round.courseName || "Unnamed course"} · Hole {displayHole} of {targetHoles}
-            </div>
-            {!roundEnded && (
-              <div className="muted">
-                Play mode
+      <div className="round-main-content">
+        <div className="top-header">
+          <div className="top-row container header-wrap">
+            <div className="header-left">
+              <div className="h1">Round entry</div>
+              <div className="course-name">
+                {round.courseName || "Unnamed course"} · Hole {displayHole} of {targetHoles}
               </div>
-            )}
-            {roundEnded && <div className="badge">Round complete</div>}
-          </div>
-          <div className="nav-links header-actions">
-            <Link href="/" className="pill">
-              Back
-            </Link>
-            <Link href={`/summary/${round.id}`} className="pill">
-              Summary
-            </Link>
-            {isEnded ? (
-              <Link href={`/summary/${round.id}`} className="pill">
-                View summary
+              {!roundEnded && (
+                <div className="muted">
+                  Play mode
+                </div>
+              )}
+              {roundEnded && <div className="badge">Round complete</div>}
+            </div>
+            <div className="nav-links header-actions">
+              <Link href="/" className="pill">
+                Back
               </Link>
-            ) : (
-              <button type="button" className="pill" onClick={handleEndRound}>
-                End round
-              </button>
-            )}
+              <Link href={`/summary/${round.id}`} className="pill">
+                Summary
+              </Link>
+              {isEnded ? (
+                <Link href={`/summary/${round.id}`} className="pill">
+                  View summary
+                </Link>
+              ) : (
+                <button type="button" className="pill" onClick={handleEndRound}>
+                  End round
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
         <div
           className="container"
@@ -815,10 +816,16 @@ export default function RoundPage() {
           <div className="muted">View all holes on Summary.</div>
         </Card>
       </div>
+      </div>
 
+      {/* Keep action bar above all layers while keyboard is open; previous layering could intercept taps. */}
       <div
         className="mobile-action-bar-shell"
-        style={{ bottom: `calc(env(safe-area-inset-bottom) + ${keyboardOffsetPx}px)` }}
+        style={{
+          bottom: `calc(env(safe-area-inset-bottom) + ${keyboardOffsetPx}px)`,
+          zIndex: 999,
+          pointerEvents: "auto",
+        }}
       >
         <div className="mobile-action-bar">
           {isEnded ? (
