@@ -64,6 +64,7 @@ export default function RoundPage() {
   const startDistanceRef = useRef<HTMLInputElement>(null);
   const endDistanceRef = useRef<HTMLInputElement>(null);
   const lastEndDistanceRef = useRef("");
+  const baselineViewportHeightRef = useRef<number>(0);
   const [shotsExpanded, setShotsExpanded] = useState(false);
   const [expandedHoles, setExpandedHoles] = useState<Record<number, boolean>>({});
   const [keyboardOffsetPx, setKeyboardOffsetPx] = useState(0);
@@ -94,23 +95,33 @@ export default function RoundPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!window.visualViewport) return;
-    const viewport = window.visualViewport;
+    baselineViewportHeightRef.current = window.innerHeight;
+
     const update = () => {
-      const offset = Math.max(
-        0,
-        window.innerHeight - viewport.height - viewport.offsetTop,
-      );
-      setKeyboardOffsetPx(offset);
+      const base = baselineViewportHeightRef.current || window.innerHeight;
+      const innerHeightOffset = Math.max(0, base - window.innerHeight);
+      const vv = window.visualViewport;
+      const visualViewportOffset = vv
+        ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+        : 0;
+      setKeyboardOffsetPx(Math.max(innerHeightOffset, visualViewportOffset));
     };
+
     update();
-    viewport.addEventListener("resize", update);
-    viewport.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
     return () => {
-      viewport.removeEventListener("resize", update);
-      viewport.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
     };
   }, []);
+
+  const handleDistanceSubmit = (): void => {
+    handleSaveShot();
+  };
 
   useEffect(() => {
     if (isEnded) return;
@@ -529,6 +540,7 @@ export default function RoundPage() {
                       className="input"
                       type="text"
                       inputMode={startLie === "GREEN" ? "decimal" : "numeric"}
+                      enterKeyHint="done"
                       pattern={startLie === "GREEN" ? "[0-9]*[.]?[0-9]*" : "[0-9]*"}
                       step={startLie === "GREEN" ? "0.1" : undefined}
                       maxLength={startLie === "GREEN" ? 5 : 3}
@@ -545,6 +557,11 @@ export default function RoundPage() {
                       }
                       disabled={isEnded}
                       ref={startDistanceRef}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        handleDistanceSubmit();
+                      }}
                       onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                     />
                     {startDistanceError && <div className="error">{startDistanceError}</div>}
@@ -586,6 +603,7 @@ export default function RoundPage() {
                     className="input"
                     type="text"
                     inputMode={endLieSelection === "GREEN" ? "decimal" : "numeric"}
+                    enterKeyHint="done"
                     pattern={endLieSelection === "GREEN" ? "[0-9]*[.]?[0-9]*" : "[0-9]*"}
                     step={endLieSelection === "GREEN" ? "0.1" : undefined}
                     maxLength={endLieSelection === "GREEN" ? 5 : 3}
@@ -603,6 +621,11 @@ export default function RoundPage() {
                     }
                     disabled={isEnded}
                     ref={endDistanceRef}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
+                      handleDistanceSubmit();
+                    }}
                     onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                   />
                   {endDistanceError && <div className="error">{endDistanceError}</div>}
