@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { createPortal } from "react-dom";
@@ -14,6 +13,42 @@ import PillToggleGroup from "../../components/ui/PillToggleGroup";
 import StatChip from "../../components/ui/StatChip";
 
 const LIES: Lie[] = ["FAIRWAY", "ROUGH", "BUNKER", "RECOVERY", "FRINGE", "GREEN"];
+
+function useVisualViewportKeyboardOffset(): number {
+  const [keyboardOffsetPx, setKeyboardOffsetPx] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const update = () => {
+      const vv = window.visualViewport;
+      if (!vv) {
+        setKeyboardOffsetPx(0);
+        return;
+      }
+      // Keep the fixed footer above the iOS keyboard in PWA mode.
+      const keyboardHeight = Math.max(
+        0,
+        window.innerHeight - vv.height - vv.offsetTop,
+      );
+      setKeyboardOffsetPx(keyboardHeight);
+    };
+
+    update();
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
+
+    return () => {
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  return keyboardOffsetPx;
+}
 
 function getSortedShotsForHole(round: Round, holeNumber: number): Shot[] {
   return round.shots
@@ -68,10 +103,9 @@ export default function RoundPage() {
   const startDistanceRef = useRef<HTMLInputElement>(null);
   const endDistanceRef = useRef<HTMLInputElement>(null);
   const lastEndDistanceRef = useRef("");
-  const baselineViewportHeightRef = useRef<number>(0);
   const [shotsExpanded, setShotsExpanded] = useState(false);
   const [expandedHoles, setExpandedHoles] = useState<Record<number, boolean>>({});
-  const [keyboardOffsetPx, setKeyboardOffsetPx] = useState(0);
+  const keyboardOffsetPx = useVisualViewportKeyboardOffset();
 
   const roundEnded = Boolean(round?.endedAt);
   const isEnded = roundEnded;
@@ -96,37 +130,6 @@ export default function RoundPage() {
     if (!puttingMode) return;
     setEndLieSelection(null);
   }, [puttingMode]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    baselineViewportHeightRef.current = window.innerHeight;
-    const isIOS = /iPad|iPhone|iPod/.test(window.navigator.userAgent);
-
-    const update = () => {
-      const base = baselineViewportHeightRef.current || window.innerHeight;
-      const innerHeightOffset = Math.max(0, base - window.innerHeight);
-      const vv = window.visualViewport;
-      const visualViewportOffset = vv
-        ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
-        : 0;
-      const rawKeyboardOffset = Math.max(innerHeightOffset, visualViewportOffset);
-      const visible = rawKeyboardOffset > 0;
-      // iOS virtual keyboard accessory area can overlap fixed footers; keep a safety gap.
-      const iosAccessoryPadding = visible && isIOS ? 44 : 0;
-      setKeyboardOffsetPx(visible ? rawKeyboardOffset + iosAccessoryPadding : 0);
-    };
-
-    update();
-    window.addEventListener("resize", update);
-    const vv = window.visualViewport;
-    vv?.addEventListener("resize", update);
-    vv?.addEventListener("scroll", update);
-    return () => {
-      window.removeEventListener("resize", update);
-      vv?.removeEventListener("resize", update);
-      vv?.removeEventListener("scroll", update);
-    };
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -456,7 +459,8 @@ export default function RoundPage() {
         position: "fixed",
         left: 0,
         right: 0,
-        zIndex: 999,
+        bottom: `calc(env(safe-area-inset-bottom) + ${keyboardOffsetPx}px)`,
+        zIndex: 9999,
         pointerEvents: "auto",
       }}
     >
@@ -540,10 +544,7 @@ export default function RoundPage() {
   );
 
   return (
-      <div
-        className="page mobile-action-spacer"
-        style={{ "--kb-offset": `${keyboardOffsetPx}px` } as CSSProperties}
-      >
+      <div className="page mobile-action-spacer">
       <div className="round-main-content">
         <div className="top-header">
           <div className="top-row container header-wrap">
