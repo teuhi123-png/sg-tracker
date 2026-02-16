@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { Lie, Round, Shot } from "../../types/golf";
@@ -59,6 +60,7 @@ export default function RoundPage() {
   const [customPutts, setCustomPutts] = useState<string>("");
   const [puttsCount, setPuttsCount] = useState<number | null>(null);
   const [saveNudge, setSaveNudge] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const puttingMode = startLie === "GREEN";
   const endLieGreen = puttingMode && puttsCount !== null;
 
@@ -91,6 +93,31 @@ export default function RoundPage() {
     if (!puttingMode) return;
     setEndLieSelection(null);
   }, [puttingMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const updateKeyboardHeight = () => {
+      const vv = window.visualViewport;
+      if (!vv) {
+        setKeyboardHeight(0);
+        return;
+      }
+      const next = Math.max(0, window.innerHeight - vv.height);
+      setKeyboardHeight(next);
+    };
+
+    updateKeyboardHeight();
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", updateKeyboardHeight);
+    vv?.addEventListener("scroll", updateKeyboardHeight);
+    window.addEventListener("resize", updateKeyboardHeight);
+    return () => {
+      vv?.removeEventListener("resize", updateKeyboardHeight);
+      vv?.removeEventListener("scroll", updateKeyboardHeight);
+      window.removeEventListener("resize", updateKeyboardHeight);
+    };
+  }, []);
 
   const scrollInputIntoView = (el: HTMLElement | null): void => {
     if (!el) return;
@@ -420,6 +447,11 @@ export default function RoundPage() {
   const footer = (
     <div
       className="mobile-action-bar-shell"
+      style={
+        {
+          transform: `translateY(-${keyboardHeight}px)`,
+        } as CSSProperties
+      }
     >
       <div className="mobile-action-bar">
         {isEnded ? (
