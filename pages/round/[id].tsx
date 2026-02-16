@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { createPortal } from "react-dom";
@@ -22,7 +23,12 @@ type KeyboardAwareBottomBarState = {
   bottomPadPx: number;
 };
 
-function useKeyboardAwareBottomBar(barHeight: number): KeyboardAwareBottomBarState {
+type KeyboardBarHook = KeyboardAwareBottomBarState & {
+  handleInputFocus: (el: HTMLElement | null) => void;
+  handleInputBlur: () => void;
+};
+
+function useKeyboardBarOffset(barHeight: number): KeyboardBarHook {
   const [state, setState] = useState<KeyboardAwareBottomBarState>({
     keyboardOverlap: 0,
     vvHeight: 0,
@@ -30,14 +36,22 @@ function useKeyboardAwareBottomBar(barHeight: number): KeyboardAwareBottomBarSta
     isKeyboardOpen: false,
     bottomPadPx: Math.max(140, barHeight),
   });
+  const overlapRef = useRef(0);
+  const rafUpdateRef = useRef(0);
+  const settleFrameRef = useRef(0);
+  const focusedElRef = useRef<HTMLElement | null>(null);
+  const baselineInnerHeightRef = useRef(0);
+  const safeBottomRef = useRef(0);
+  const focusHandlerRef = useRef<(el: HTMLElement | null) => void>(() => {});
+  const blurHandlerRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    baselineInnerHeightRef.current = window.innerHeight;
     const root = document.documentElement;
     const DEBUG_KEYBOARD = false;
-    let frameId = 0;
 
-    const readSafeBottom = (): number => {
+    const readSafeBottom = () => {
       const cssSafe = Number.parseFloat(
         getComputedStyle(root).getPropertyValue("--safe-bottom") || "0",
       );
@@ -46,19 +60,19 @@ function useKeyboardAwareBottomBar(barHeight: number): KeyboardAwareBottomBarSta
       return Number.isFinite(bodySafe) ? bodySafe : 0;
     };
 
-    const commit = () => {
-      frameId = 0;
+    const update = () => {
+      safeBottomRef.current = readSafeBottom();
       const vv = window.visualViewport;
-      const safeBottom = readSafeBottom();
+      const fallbackKb = Math.max(0, baselineInnerHeightRef.current - window.innerHeight);
       if (!vv) {
-        root.style.setProperty("--kb", "0px");
         const nextState: KeyboardAwareBottomBarState = {
-          keyboardOverlap: 0,
+          keyboardOverlap: fallbackKb,
           vvHeight: window.innerHeight,
           vvOffsetTop: 0,
-          isKeyboardOpen: false,
-          bottomPadPx: Math.max(140, barHeight + safeBottom),
+          isKeyboardOpen: fallbackKb > 0,
+          bottomPadPx: Math.max(140, barHeight + safeBottomRef.current + fallbackKb),
         };
+        overlapRef.current = nextState.keyboardOverlap;
         setState((prev) =>
           prev.keyboardOverlap === nextState.keyboardOverlap &&
           prev.vvHeight === nextState.vvHeight &&
@@ -71,18 +85,17 @@ function useKeyboardAwareBottomBar(barHeight: number): KeyboardAwareBottomBarSta
         return;
       }
       const kbPx = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
-      const isKeyboardOpen = kbPx > 0;
       const nextState: KeyboardAwareBottomBarState = {
         keyboardOverlap: kbPx,
         vvHeight: vv.height,
         vvOffsetTop: vv.offsetTop,
-        isKeyboardOpen,
-        bottomPadPx: Math.max(140, barHeight + safeBottom + (isKeyboardOpen ? kbPx : 0)),
+        isKeyboardOpen: kbPx > 0,
+        bottomPadPx: Math.max(140, barHeight + safeBottomRef.current + kbPx),
       };
-      root.style.setProperty("--kb", `${kbPx}px`);
+      overlapRef.current = kbPx;
       if (DEBUG_KEYBOARD) {
         // eslint-disable-next-line no-console
-        console.debug("[kb]", nextState);
+        console.debug("[keyboard]", nextState);
       }
       setState((prev) =>
         prev.keyboardOverlap === nextState.keyboardOverlap &&
@@ -96,8 +109,55 @@ function useKeyboardAwareBottomBar(barHeight: number): KeyboardAwareBottomBarSta
     };
 
     const schedule = () => {
-      if (frameId) return;
-      frameId = window.requestAnimationFrame(commit);
+      if (rafUpdateRef.current) return;
+      rafUpdateRef.current = window.requestAnimationFrame(() => {
+        rafUpdateRef.current = 0;
+        update();
+      });
+    };
+
+    const ensureFocusedVisible = () => {
+      const el = focusedElRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const vv = window.visualViewport;
+      const viewportBottom = vv ? vv.height + vv.offsetTop : window.innerHeight;
+      const blockedBottom = barHeight + safeBottomRef.current + overlapRef.current + 12;
+      const limitBottom = viewportBottom - blockedBottom;
+      if (rect.bottom > limitBottom) {
+        el.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+      }
+    };
+
+    const startSettleLoop = () => {
+      if (settleFrameRef.current) {
+        window.cancelAnimationFrame(settleFrameRef.current);
+      }
+      const start = performance.now();
+      const tick = () => {
+        update();
+        if (performance.now() - start < 250) {
+          settleFrameRef.current = window.requestAnimationFrame(tick);
+          return;
+        }
+        settleFrameRef.current = 0;
+        window.requestAnimationFrame(ensureFocusedVisible);
+      };
+      settleFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    focusHandlerRef.current = (el) => {
+      focusedElRef.current = el;
+      update();
+      startSettleLoop();
+    };
+    blurHandlerRef.current = () => {
+      focusedElRef.current = null;
+      if (settleFrameRef.current) {
+        window.cancelAnimationFrame(settleFrameRef.current);
+        settleFrameRef.current = 0;
+      }
+      update();
     };
 
     schedule();
@@ -110,14 +170,26 @@ function useKeyboardAwareBottomBar(barHeight: number): KeyboardAwareBottomBarSta
       vv?.removeEventListener("resize", schedule);
       vv?.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
-      if (frameId) {
-        window.cancelAnimationFrame(frameId);
+      if (rafUpdateRef.current) {
+        window.cancelAnimationFrame(rafUpdateRef.current);
       }
-      root.style.setProperty("--kb", "0px");
+      if (settleFrameRef.current) {
+        window.cancelAnimationFrame(settleFrameRef.current);
+      }
+      focusHandlerRef.current = () => {};
+      blurHandlerRef.current = () => {};
     };
   }, [barHeight]);
 
-  return state;
+  const handleInputFocus = useCallback((el: HTMLElement | null) => {
+    focusHandlerRef.current(el);
+  }, []);
+
+  const handleInputBlur = useCallback(() => {
+    blurHandlerRef.current();
+  }, []);
+
+  return { ...state, handleInputFocus, handleInputBlur };
 }
 
 function getSortedShotsForHole(round: Round, holeNumber: number): Shot[] {
@@ -177,7 +249,8 @@ export default function RoundPage() {
   const [shotsExpanded, setShotsExpanded] = useState(false);
   const [expandedHoles, setExpandedHoles] = useState<Record<number, boolean>>({});
   const [footerHeight, setFooterHeight] = useState(96);
-  const { keyboardOverlap, bottomPadPx } = useKeyboardAwareBottomBar(footerHeight);
+  const { keyboardOverlap, bottomPadPx, handleInputFocus, handleInputBlur } =
+    useKeyboardBarOffset(footerHeight);
 
   const roundEnded = Boolean(round?.endedAt);
   const isEnded = roundEnded;
@@ -207,26 +280,6 @@ export default function RoundPage() {
     if (typeof window === "undefined") return;
     setFooterPortalReady(true);
   }, []);
-
-  const scrollInputIntoView = (el: HTMLElement | null): void => {
-    if (!el || typeof window === "undefined") return;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const rect = el.getBoundingClientRect();
-        const vv = window.visualViewport;
-        const viewportBottom = vv ? vv.height : window.innerHeight;
-        const safeBottom = Number.parseFloat(
-          getComputedStyle(document.documentElement).getPropertyValue("--safe-bottom") || "0",
-        );
-        const usableSafeBottom = Number.isFinite(safeBottom) ? safeBottom : 0;
-        const blockedBottom = footerHeight + keyboardOverlap + usableSafeBottom + 12;
-        const limitBottom = viewportBottom - blockedBottom;
-        if (rect.bottom > limitBottom) {
-          el.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
-        }
-      });
-    });
-  };
 
   useEffect(() => {
     if (!footerPortalReady) return;
@@ -259,18 +312,18 @@ export default function RoundPage() {
     if (!puttingMode) {
       const el = startDistanceRef.current;
       el?.focus();
-      scrollInputIntoView(el);
+      handleInputFocus(el);
     }
-  }, [startLie, puttingMode, isEnded]);
+  }, [startLie, puttingMode, isEnded, handleInputFocus]);
 
   useEffect(() => {
     if (isEnded) return;
     if (!endLieGreen && !puttingMode) {
       const el = endDistanceRef.current;
       el?.focus();
-      scrollInputIntoView(el);
+      handleInputFocus(el);
     }
-  }, [endLieGreen, puttingMode, isEnded]);
+  }, [endLieGreen, puttingMode, isEnded, handleInputFocus]);
 
   useEffect(() => {
     if (!saveNudge) return;
@@ -571,12 +624,14 @@ export default function RoundPage() {
       ref={footerRef}
       className="mobile-action-bar-shell"
       style={{
+        "--kb": `${keyboardOverlap}px`,
+        "--bar-h": `${footerHeight}px`,
         position: "fixed",
         left: 0,
         right: 0,
         zIndex: 2147483000,
         pointerEvents: "auto",
-      }}
+      } as CSSProperties}
     >
       <div className="mobile-action-bar">
         {isEnded ? (
@@ -658,7 +713,16 @@ export default function RoundPage() {
   );
 
   return (
-      <div className="page mobile-action-spacer">
+      <div
+        className="page mobile-action-spacer"
+        style={
+          {
+            "--kb": `${keyboardOverlap}px`,
+            "--bar-h": `${footerHeight}px`,
+            "--bottom-pad": `${bottomPadPx}px`,
+          } as CSSProperties
+        }
+      >
       <div className="round-main-content">
         <div className="top-header">
           <div className="top-row container header-wrap">
@@ -697,7 +761,8 @@ export default function RoundPage() {
         <div
           className="container"
           style={{
-            paddingBottom: bottomPadPx,
+            paddingBottom:
+              "max(var(--bottom-pad, 140px), calc(var(--bar-h, 96px) + var(--safe-bottom, 0px) + var(--kb, 0px)))",
           }}
         >
         <form
@@ -772,8 +837,9 @@ export default function RoundPage() {
                         setStartDistance(clampDistanceText(e.target.value, startLie === "GREEN"))
                       }
                       onFocus={() =>
-                        scrollInputIntoView(startDistanceRef.current)
+                        handleInputFocus(startDistanceRef.current)
                       }
+                      onBlur={handleInputBlur}
                       disabled={isEnded}
                       ref={startDistanceRef}
                       onKeyDown={(e) => {
@@ -805,7 +871,7 @@ export default function RoundPage() {
                       if (isEnded) return;
                       setEndLieSelection(value);
                       endDistanceRef.current?.focus();
-                      scrollInputIntoView(endDistanceRef.current);
+                      handleInputFocus(endDistanceRef.current);
                     }}
                     ariaLabel="End lie"
                   />
@@ -837,8 +903,11 @@ export default function RoundPage() {
                       setEndDistanceText(String(clamped));
                       setEndDistanceValue(clamped);
                     }}
-                    onBlur={() => setSaveNudge(true)}
-                    onFocus={() => scrollInputIntoView(endDistanceRef.current)}
+                    onBlur={() => {
+                      setSaveNudge(true);
+                      handleInputBlur();
+                    }}
+                    onFocus={() => handleInputFocus(endDistanceRef.current)}
                     disabled={isEnded}
                     ref={endDistanceRef}
                     onKeyDown={(e) => {
@@ -895,7 +964,8 @@ export default function RoundPage() {
                           onChange={(e) =>
                             setCustomPutts(clampDistanceText(e.target.value, false))
                           }
-                          onFocus={(e) => scrollInputIntoView(e.currentTarget)}
+                          onFocus={(e) => handleInputFocus(e.currentTarget)}
+                          onBlur={handleInputBlur}
                           disabled={isEnded}
                         />
                       </label>
