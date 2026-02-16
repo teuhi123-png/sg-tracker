@@ -18,7 +18,7 @@
   --chip-text: #93c5fd;
   --focus: 0 0 0 3px rgba(37, 99, 235, 0.4);
   --container: 1000px;
-  --kb-lift: 0px;
+  --sat: env(safe-area-inset-bottom);
 }
 
 * {
@@ -413,7 +413,7 @@ a:hover {
     left: 0;
     right: 0;
     bottom: env(safe-area-inset-bottom);
-    transform: translateY(calc(-1 * var(--kb-lift, 0px)));
+    transform: translateY(0);
     z-index: 2147483000;
     pointer-events: auto;
     touch-action: manipulation;

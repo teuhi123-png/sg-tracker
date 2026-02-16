@@ -18,18 +18,29 @@ function useVisualViewportKeyboardOffset(): void {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const root = document.documentElement;
+    const safeFromVar = parseFloat(getComputedStyle(root).getPropertyValue("--sat") || "0");
+    const safeFromBody = parseFloat(getComputedStyle(document.body).paddingBottom || "0");
+    const safe =
+      Number.isFinite(safeFromVar) && safeFromVar > 0
+        ? safeFromVar
+        : Number.isFinite(safeFromBody)
+          ? safeFromBody
+          : 0;
+    const maxLift = 320;
 
     const update = () => {
       const vv = window.visualViewport;
+      const actionBar = document.querySelector<HTMLElement>(".mobile-action-bar-shell");
       if (!vv) {
-        root.style.setProperty("--kb-lift", "0px");
+        if (actionBar) actionBar.style.transform = "translateY(0px)";
         return;
       }
-      const viewportHeight = window.innerHeight;
-      const visualHeight = vv.height;
-      const keyboardHeight = Math.max(0, viewportHeight - visualHeight);
-      const offset = keyboardHeight > 0 ? keyboardHeight + 8 : 0;
-      root.style.setProperty("--kb-lift", `${offset}px`);
+      const viewportH = window.innerHeight;
+      const keyboard = Math.max(0, viewportH - vv.height - vv.offsetTop);
+      const gap = keyboard > 0 ? 6 : 0;
+      const translate = Math.max(0, keyboard + gap - safe);
+      const translateClamped = Math.min(translate, maxLift);
+      if (actionBar) actionBar.style.transform = `translateY(-${translateClamped}px)`;
     };
 
     update();
@@ -42,7 +53,8 @@ function useVisualViewportKeyboardOffset(): void {
       vv?.removeEventListener("resize", update);
       vv?.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
-      root.style.setProperty("--kb-lift", "0px");
+      const actionBar = document.querySelector<HTMLElement>(".mobile-action-bar-shell");
+      if (actionBar) actionBar.style.transform = "translateY(0px)";
     };
   }, []);
 }
