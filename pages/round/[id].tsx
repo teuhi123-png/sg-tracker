@@ -22,14 +22,14 @@ function useVisualViewportKeyboardOffset(): void {
     const update = () => {
       const vv = window.visualViewport;
       if (!vv) {
-        root.style.setProperty("--kb", "0px");
+        root.style.setProperty("--kb-lift", "0px");
         return;
       }
-      const viewportHeight = root.clientHeight;
-      const overlap = Math.max(0, viewportHeight - vv.height - vv.offsetTop) + 12;
-      const extraLift = 56;
-      const totalLift = overlap + extraLift;
-      root.style.setProperty("--kb", `${totalLift}px`);
+      const viewportHeight = window.innerHeight;
+      const visualHeight = vv.height;
+      const keyboardHeight = Math.max(0, viewportHeight - visualHeight);
+      const offset = keyboardHeight > 0 ? keyboardHeight + 8 : 0;
+      root.style.setProperty("--kb-lift", `${offset}px`);
     };
 
     update();
@@ -42,7 +42,7 @@ function useVisualViewportKeyboardOffset(): void {
       vv?.removeEventListener("resize", update);
       vv?.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
-      root.style.setProperty("--kb", "0px");
+      root.style.setProperty("--kb-lift", "0px");
     };
   }, []);
 }
